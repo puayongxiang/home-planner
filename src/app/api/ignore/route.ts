@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readDB, writeDB } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const db = readDB();
   return NextResponse.json(db.ignoredIds);

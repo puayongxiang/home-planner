@@ -3,6 +3,8 @@ import puppeteer from "puppeteer";
 import { v4 as uuidv4 } from "uuid";
 import { readDB, writeDB, CrawledImage } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 const BASE_URL = "https://qanvast.com/sg/interior-design-singapore";
 
 interface CrawledEntry {
@@ -86,56 +88,87 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  try {
-    const db = readDB();
-    let totalNew = 0;
-    let totalFound = 0;
+  const rooms: string[] = roomTypes || [];
+  const styleParam = (styles || []).join(",");
 
-    // Crawl each room type separately so we can tag images
-    const rooms: string[] = roomTypes || [];
-    const styleParam = (styles || []).join(",");
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const db = readDB();
+        let totalNew = 0;
+        let totalFound = 0;
 
-    for (const room of rooms) {
-      const params = new URLSearchParams();
-      if (styleParam) params.set("style", styleParam);
-      params.set("roomType", room);
+        for (let i = 0; i < rooms.length; i++) {
+          const room = rooms[i];
 
-      const url = `${BASE_URL}?${params.toString()}`;
-      const entries = await crawlPage(url, scrollCount);
-      totalFound += entries.length;
+          // Send progress event - starting room
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: "progress", room, current: i, total: rooms.length })}\n\n`
+            )
+          );
 
-      const newImages: CrawledImage[] = entries
-        .filter(
-          (e) => !db.crawledImages.some((c) => c.imageUrl === e.src)
-        )
-        .map((e) => ({
-          id: uuidv4(),
-          sourceUrl: url,
-          imageUrl: e.src,
-          alt: e.alt,
-          roomType: room,
-          style: styleParam,
-          crawledAt: new Date().toISOString(),
-        }));
+          const params = new URLSearchParams();
+          if (styleParam) params.set("style", styleParam);
+          params.set("roomType", room);
 
-      totalNew += newImages.length;
-      db.crawledImages.push(...newImages);
-    }
+          const url = `${BASE_URL}?${params.toString()}`;
+          const entries = await crawlPage(url, scrollCount);
+          totalFound += entries.length;
 
-    writeDB(db);
+          const newImages: CrawledImage[] = entries
+            .filter(
+              (e) => !db.crawledImages.some((c) => c.imageUrl === e.src)
+            )
+            .map((e) => ({
+              id: uuidv4(),
+              sourceUrl: url,
+              imageUrl: e.src,
+              alt: e.alt,
+              roomType: room,
+              style: styleParam,
+              crawledAt: new Date().toISOString(),
+            }));
 
-    return NextResponse.json({
-      total: totalFound,
-      new: totalNew,
-      roomsCrawled: rooms.length,
-    });
-  } catch (error) {
-    console.error("Crawl error:", error);
-    return NextResponse.json(
-      { error: "Failed to crawl. Check console for details." },
-      { status: 500 }
-    );
-  }
+          totalNew += newImages.length;
+          db.crawledImages.push(...newImages);
+
+          // Send room complete with images found
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: "room_done", room, current: i + 1, total: rooms.length, images: newImages, found: entries.length, newCount: newImages.length })}\n\n`
+            )
+          );
+        }
+
+        writeDB(db);
+
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "done", total: totalFound, new: totalNew, roomsCrawled: rooms.length })}\n\n`
+          )
+        );
+      } catch (error) {
+        console.error("Crawl error:", error);
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "error", error: "Failed to crawl" })}\n\n`
+          )
+        );
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }
 
 export async function GET() {
