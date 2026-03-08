@@ -32,6 +32,15 @@ export interface CrawledImage {
   crawledAt: string;
 }
 
+export type DrawTool = "pen" | "circle" | "rect" | "highlight";
+
+export interface Stroke {
+  tool: DrawTool;
+  points: { x: number; y: number }[];
+  color: string;
+  width: number;
+}
+
 export interface MoodboardImage {
   id: string;
   crawledImageId: string;
@@ -39,4 +48,16 @@ export interface MoodboardImage {
   comment: string;
   addedAt: string;
   featured?: boolean;
+  annotations?: Stroke[];
+}
+
+export interface FurnitureItem {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  price?: string;
+  link?: string;
+  roomType?: string;
+  notes?: string;
+  addedAt: string;
 }

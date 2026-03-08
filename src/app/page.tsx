@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Link from "next/link";
-import { MoodboardImage, ROOM_TYPES, STYLES } from "@/lib/types";
+import { MoodboardImage, Stroke, DrawTool, ROOM_TYPES, STYLES } from "@/lib/types";
+import AnnotationCanvas from "@/components/AnnotationCanvas";
 
 interface EnrichedMoodboardImage extends MoodboardImage {
   roomType: string;
@@ -44,6 +45,11 @@ export default function Home() {
   const [addUrlStyle, setAddUrlStyle] = useState("Uncategorised");
   const [addUrlStatus, setAddUrlStatus] = useState("");
   const [addingUrl, setAddingUrl] = useState(false);
+  const [isDrawMode, setIsDrawMode] = useState(false);
+  const [drawTool, setDrawTool] = useState<DrawTool>("pen");
+  const [drawColor, setDrawColor] = useState("#FF4444");
+  const [drawWidth, setDrawWidth] = useState(4);
+  const lightboxImageContainerRef = useRef<HTMLDivElement>(null);
   const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const loadMoodboard = useCallback(async () => {
@@ -77,21 +83,35 @@ export default function Home() {
   const featuredImages = useMemo(() => filteredImages.filter((img) => img.featured), [filteredImages]);
   const gridImages = useMemo(() => filteredImages.filter((img) => !img.featured), [filteredImages]);
 
+  const lightboxImage = lightboxIndex !== null ? filteredImages[lightboxIndex] : null;
+
+  // Reset draw mode when switching images
+  useEffect(() => {
+    setIsDrawMode(false);
+  }, [lightboxIndex]);
+
   // Keyboard for lightbox
   useEffect(() => {
     if (lightboxIndex === null) return;
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setLightboxIndex(null);
-      if (e.key === "ArrowRight")
-        setLightboxIndex((i) => (i !== null ? Math.min(i + 1, filteredImages.length - 1) : null));
-      if (e.key === "ArrowLeft")
-        setLightboxIndex((i) => (i !== null ? Math.max(i - 1, 0) : null));
+      if (e.key === "Escape") {
+        if (isDrawMode) { setIsDrawMode(false); return; }
+        setLightboxIndex(null);
+      }
+      if (!isDrawMode) {
+        if (e.key === "ArrowRight")
+          setLightboxIndex((i) => (i !== null ? Math.min(i + 1, filteredImages.length - 1) : null));
+        if (e.key === "ArrowLeft")
+          setLightboxIndex((i) => (i !== null ? Math.max(i - 1, 0) : null));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && lightboxImage) {
+        e.preventDefault();
+        handleAnnotationUndo(lightboxImage.id);
+      }
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [lightboxIndex, filteredImages.length]);
-
-  const lightboxImage = lightboxIndex !== null ? filteredImages[lightboxIndex] : null;
+  }, [lightboxIndex, filteredImages.length, isDrawMode, lightboxImage]);
 
   async function handleAddUrl() {
     if (!addUrl.trim()) return;
@@ -150,6 +170,61 @@ export default function Home() {
     if (lightboxIndex !== null) setLightboxIndex(null);
   }
 
+  function handleAnnotationAdd(id: string, stroke: Stroke) {
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === id ? { ...img, annotations: [...(img.annotations || []), stroke] } : img
+      )
+    );
+    // Debounced save
+    const key = `ann-${id}`;
+    const existing = debounceTimers.current.get(key);
+    if (existing) clearTimeout(existing);
+    debounceTimers.current.set(
+      key,
+      setTimeout(async () => {
+        const current = images.find((i) => i.id === id);
+        const updatedAnnotations = [...(current?.annotations || []), stroke];
+        await fetch("/api/moodboard", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, annotations: updatedAnnotations }),
+        });
+        debounceTimers.current.delete(key);
+      }, 800)
+    );
+  }
+
+  function handleAnnotationUndo(id: string) {
+    setImages((prev) =>
+      prev.map((img) => {
+        if (img.id !== id || !img.annotations?.length) return img;
+        const newAnnotations = img.annotations.slice(0, -1);
+        // Save immediately on undo
+        fetch("/api/moodboard", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, annotations: newAnnotations }),
+        });
+        return { ...img, annotations: newAnnotations };
+      })
+    );
+  }
+
+  function handleAnnotationClear(id: string) {
+    setImages((prev) =>
+      prev.map((img) => {
+        if (img.id !== id) return img;
+        fetch("/api/moodboard", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, annotations: [] }),
+        });
+        return { ...img, annotations: [] };
+      })
+    );
+  }
+
   async function handleToggleFeatured(id: string) {
     const img = images.find((i) => i.id === id);
     if (!img) return;
@@ -183,13 +258,22 @@ export default function Home() {
               </span>
             )}
           </div>
-          <Link
-            href="/browse"
-            className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
-            style={{ background: "var(--text-primary)", color: "var(--bg-primary)" }}
-          >
-            Browse & Crawl
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/furniture"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
+              style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "1px solid var(--border-light)" }}
+            >
+              Furniture
+            </Link>
+            <Link
+              href="/browse"
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
+              style={{ background: "var(--text-primary)", color: "var(--bg-primary)" }}
+            >
+              Browse & Crawl
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -370,34 +454,163 @@ export default function Home() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
           style={{ background: "rgba(0, 0, 0, 0.85)" }}
-          onClick={() => setLightboxIndex(null)}
+          onClick={() => { if (!isDrawMode) setLightboxIndex(null); }}
         >
-          <button className="absolute top-5 right-5 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={() => setLightboxIndex(null)}>
+          {/* Close button */}
+          <button className="absolute top-5 right-5 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80 z-10" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={(e) => { e.stopPropagation(); setLightboxIndex(null); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
-          {lightboxIndex! > 0 && (
+          {/* Nav arrows */}
+          {!isDrawMode && lightboxIndex! > 0 && (
             <button className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i! - 1); }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
             </button>
           )}
-          {lightboxIndex! < filteredImages.length - 1 && (
+          {!isDrawMode && lightboxIndex! < filteredImages.length - 1 && (
             <button className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i! + 1); }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
           )}
           <div className="max-w-[90vw] max-h-[85vh] flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img key={lightboxImage.id} src={lightboxImage.imageUrl} alt="Moodboard image" className="max-w-full max-h-[75vh] object-contain rounded-lg" style={{ animation: "lightboxIn 0.2s ease-out" }} referrerPolicy="no-referrer" />
-            <div className="mt-4 text-center">
-              <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.6)" }}>
-                {lightboxImage.roomType} &middot; {lightboxImage.style}
-              </span>
-              {lightboxImage.comment && (
-                <p className="mt-1 text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>&ldquo;{lightboxImage.comment}&rdquo;</p>
-              )}
-              <p className="mt-1 text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                {lightboxIndex! + 1} / {filteredImages.length}
-              </p>
+            {/* Image + canvas overlay */}
+            <div ref={lightboxImageContainerRef} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img key={lightboxImage.id} src={lightboxImage.imageUrl} alt="Moodboard image" className="max-w-full max-h-[65vh] object-contain rounded-lg" style={{ animation: "lightboxIn 0.2s ease-out" }} referrerPolicy="no-referrer" />
+              <AnnotationCanvas
+                containerRef={lightboxImageContainerRef}
+                annotations={lightboxImage.annotations || []}
+                isDrawMode={isDrawMode}
+                currentColor={drawColor}
+                currentWidth={drawWidth}
+                currentTool={drawTool}
+                onStrokeAdd={(stroke) => handleAnnotationAdd(lightboxImage.id, stroke)}
+              />
+            </div>
+
+            {/* Drawing toolbar — always visible */}
+            <div className="mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.12)" }}>
+              {/* View mode (cursor) */}
+              <button
+                className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all"
+                style={{ background: !isDrawMode ? "rgba(255,255,255,0.25)" : "transparent", color: "white" }}
+                onClick={() => setIsDrawMode(false)}
+                title="View mode (Esc)"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" /><path d="M13 13l6 6" />
+                </svg>
+              </button>
+
+              {/* Divider */}
+              <div className="w-px h-6" style={{ background: "rgba(255,255,255,0.15)" }} />
+
+              {/* Tool buttons */}
+              {([
+                { tool: "pen" as DrawTool, label: "Pen", icon: <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /> },
+                { tool: "highlight" as DrawTool, label: "Highlight", icon: <><path d="m9 11-6 6v3h9l3-3" /><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" /></> },
+                { tool: "circle" as DrawTool, label: "Circle", icon: <circle cx="12" cy="12" r="10" /> },
+                { tool: "rect" as DrawTool, label: "Rectangle", icon: <rect x="3" y="3" width="18" height="18" rx="2" /> },
+              ] as const).map(({ tool, label, icon }) => (
+                <button
+                  key={tool}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all"
+                  style={{ background: isDrawMode && drawTool === tool ? "rgba(255,255,255,0.25)" : "transparent", color: "white" }}
+                  onClick={() => { setIsDrawMode(true); setDrawTool(tool); }}
+                  title={label}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    {icon}
+                  </svg>
+                </button>
+              ))}
+
+              {/* Divider */}
+              <div className="w-px h-6" style={{ background: "rgba(255,255,255,0.15)" }} />
+
+              {/* Color swatches */}
+              {["#FF4444", "#4488FF", "#44CC44", "#FFD700", "#FFFFFF", "#000000"].map((c) => (
+                <button
+                  key={c}
+                  className="w-5 h-5 rounded-full cursor-pointer transition-transform hover:scale-110"
+                  style={{
+                    background: c,
+                    border: drawColor === c ? "2px solid white" : "2px solid transparent",
+                    boxShadow: drawColor === c ? "0 0 0 1.5px rgba(255,255,255,0.4)" : "none",
+                    outline: c === "#000000" ? "1px solid rgba(255,255,255,0.3)" : "none",
+                  }}
+                  onClick={() => setDrawColor(c)}
+                />
+              ))}
+
+              {/* Divider */}
+              <div className="w-px h-6" style={{ background: "rgba(255,255,255,0.15)" }} />
+
+              {/* Stroke widths */}
+              {[2, 4, 8].map((w) => (
+                <button
+                  key={w}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all"
+                  style={{ background: drawWidth === w ? "rgba(255,255,255,0.2)" : "transparent" }}
+                  onClick={() => setDrawWidth(w)}
+                >
+                  <div className="rounded-full" style={{ width: w + 3, height: w + 3, background: "white" }} />
+                </button>
+              ))}
+
+              {/* Divider */}
+              <div className="w-px h-6" style={{ background: "rgba(255,255,255,0.15)" }} />
+
+              {/* Undo */}
+              <button
+                className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/10 disabled:opacity-30"
+                style={{ color: "white" }}
+                onClick={() => handleAnnotationUndo(lightboxImage.id)}
+                disabled={!lightboxImage.annotations?.length}
+                title="Undo (Ctrl+Z)"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
+              </button>
+
+              {/* Clear all */}
+              <button
+                className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer transition-all hover:bg-white/10 disabled:opacity-30"
+                style={{ color: "white" }}
+                onClick={() => handleAnnotationClear(lightboxImage.id)}
+                disabled={!lightboxImage.annotations?.length}
+                title="Clear all"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Info + comment */}
+            <div className="mt-3 flex flex-col items-center gap-2 w-full max-w-lg">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.6)" }}>
+                  {lightboxImage.roomType} &middot; {lightboxImage.style}
+                </span>
+                <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  {lightboxIndex! + 1} / {filteredImages.length}
+                </span>
+              </div>
+              <textarea
+                value={lightboxImage.comment || ""}
+                onChange={(e) => handleCommentChange(lightboxImage.id, e.target.value)}
+                placeholder="Add a note..."
+                className="w-full text-sm rounded-lg px-4 py-2.5 resize-none focus:outline-none placeholder:italic"
+                style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.9)" }}
+                rows={2}
+                onClick={(e) => e.stopPropagation()}
+                onInput={(e) => {
+                  const t = e.target as HTMLTextAreaElement;
+                  t.style.height = "auto";
+                  t.style.height = t.scrollHeight + "px";
+                }}
+              />
             </div>
           </div>
         </div>
@@ -431,6 +644,57 @@ export default function Home() {
   );
 }
 
+/* ── Strokes SVG overlay for cards ── */
+function StrokesOverlay({ annotations }: { annotations?: Stroke[] }) {
+  if (!annotations?.length) return null;
+  const S = 1000;
+  return (
+    <svg className="absolute inset-0 w-full h-full pointer-events-none z-[5] card-image" viewBox={`0 0 ${S} ${S}`} preserveAspectRatio="none">
+      {annotations.map((stroke, i) => {
+        if (stroke.points.length < 2) return null;
+        const tool = stroke.tool || "pen";
+
+        if (tool === "circle") {
+          const p0 = stroke.points[0];
+          const p1 = stroke.points[stroke.points.length - 1];
+          const cx = ((p0.x + p1.x) / 2) * S;
+          const cy = ((p0.y + p1.y) / 2) * S;
+          const rx = Math.abs(p1.x - p0.x) / 2 * S;
+          const ry = Math.abs(p1.y - p0.y) / 2 * S;
+          return <ellipse key={i} cx={cx} cy={cy} rx={rx} ry={ry} fill="none" stroke={stroke.color} strokeWidth={stroke.width} />;
+        }
+
+        if (tool === "rect") {
+          const p0 = stroke.points[0];
+          const p1 = stroke.points[stroke.points.length - 1];
+          const x = Math.min(p0.x, p1.x) * S;
+          const y = Math.min(p0.y, p1.y) * S;
+          const w = Math.abs(p1.x - p0.x) * S;
+          const h = Math.abs(p1.y - p0.y) * S;
+          return <rect key={i} x={x} y={y} width={w} height={h} fill="none" stroke={stroke.color} strokeWidth={stroke.width} />;
+        }
+
+        // pen or highlight
+        const d = stroke.points
+          .map((p, j) => `${j === 0 ? "M" : "L"}${p.x * S} ${p.y * S}`)
+          .join(" ");
+        return (
+          <path
+            key={i}
+            d={d}
+            fill="none"
+            stroke={stroke.color}
+            strokeWidth={tool === "highlight" ? stroke.width * 4 : stroke.width}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={tool === "highlight" ? 0.35 : 1}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
 /* ── Hero Card (featured) ── */
 function HeroCard({
   img,
@@ -460,46 +724,41 @@ function HeroCard({
           style={{ aspectRatio: "21/9" }}
           referrerPolicy="no-referrer"
         />
-        {/* Gradient overlay */}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 50%)" }} />
-        {/* Bottom info */}
-        <div className="absolute bottom-5 left-6 flex items-center gap-2.5">
-          <span
-            className="text-xs font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full"
-            style={{ background: roomColor, color: "white" }}
-          >
-            {img.roomType}
-          </span>
-          {img.style && img.style !== "Uncategorised" && (
-            <span
-              className="text-xs font-medium px-2.5 py-1.5 rounded-full"
-              style={{ background: styleColor ? `${styleColor}dd` : "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.95)" }}
-            >
-              {img.style}
+        <StrokesOverlay annotations={img.annotations} />
+        {/* Always-visible info at bottom */}
+        <div className="absolute inset-x-0 bottom-0 p-5 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)" }}>
+          <div className="flex items-center gap-2.5">
+            <span className="text-xs font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full" style={{ background: roomColor, color: "white" }}>
+              {img.roomType}
             </span>
-          )}
+            {img.style && img.style !== "Uncategorised" && (
+              <span className="text-xs font-medium px-2.5 py-1.5 rounded-full" style={{ background: styleColor ? `${styleColor}dd` : "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.95)" }}>
+                {img.style}
+              </span>
+            )}
+            {img.comment && (
+              <span className="ml-auto text-sm max-w-[300px] truncate" style={{ color: "rgba(255,255,255,0.8)" }}>
+                &ldquo;{img.comment}&rdquo;
+              </span>
+            )}
+          </div>
         </div>
-        {img.comment && (
-          <p className="absolute bottom-5 right-6 text-sm max-w-[300px] truncate" style={{ color: "rgba(255,255,255,0.8)" }}>
-            &ldquo;{img.comment}&rdquo;
-          </p>
-        )}
-        {/* Action buttons — top right */}
-        <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 -translate-y-1 group-hover:translate-y-0">
+        {/* Action buttons — appear on hover, don't block image click */}
+        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
           <button
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium cursor-pointer transition-colors hover:brightness-110"
+            style={{ background: "rgba(212, 170, 60, 0.9)", color: "white" }}
             onClick={(e) => { e.stopPropagation(); onToggleFeatured(img.id); }}
-            className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer"
-            style={{ background: "rgba(212, 170, 60, 0.85)", color: "white", backdropFilter: "blur(4px)" }}
-            title="Unfeature"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+            Unfeature
           </button>
           <button
+            className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded-full text-sm font-medium cursor-pointer transition-colors hover:bg-gray-100"
             onClick={(e) => { e.stopPropagation(); onRemove(img.id); }}
-            className="w-9 h-9 rounded-full flex items-center justify-center cursor-pointer"
-            style={{ background: "rgba(0,0,0,0.5)", color: "white", backdropFilter: "blur(4px)" }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            Remove
           </button>
         </div>
       </div>
@@ -540,38 +799,47 @@ function GridCard({
             style={{ aspectRatio: "4/3" }}
             referrerPolicy="no-referrer"
           />
+          <StrokesOverlay annotations={img.annotations} />
           {/* Room tag — always visible */}
           <span
-            className="absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full"
+            className="absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full pointer-events-none z-10"
             style={{ background: `${roomColor}cc`, color: "white", backdropFilter: "blur(4px)" }}
           >
             {img.roomType}
           </span>
-          {/* Style chip — on hover */}
+          {/* Annotation indicator */}
+          {img.annotations && img.annotations.length > 0 && (
+            <span className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center pointer-events-none z-10" style={{ background: "rgba(255, 68, 68, 0.85)" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 19l7-7 3 3-7 7-3-3z" /><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" /><path d="M2 2l7.586 7.586" />
+              </svg>
+            </span>
+          )}
+          {/* Style chip — always visible bottom left */}
           {img.style && img.style !== "Uncategorised" && (
             <span
-              className="absolute bottom-3 left-3 text-[11px] font-medium px-2.5 py-1 rounded-full transition-all duration-300 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0"
+              className="absolute bottom-3 left-3 text-[11px] font-medium px-2.5 py-1 rounded-full pointer-events-none z-10"
               style={{ background: styleColor ? `${styleColor}dd` : "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.95)", backdropFilter: "blur(4px)" }}
             >
               {img.style}
             </span>
           )}
-          {/* Action buttons — top right, on hover */}
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 -translate-y-1 group-hover:translate-y-0">
+          {/* Action buttons — appear on hover, don't block image click */}
+          <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
             <button
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
+              style={{ background: "rgba(212, 170, 60, 0.9)", color: "white" }}
               onClick={(e) => { e.stopPropagation(); onToggleFeatured(img.id); }}
-              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer"
-              style={{ background: "rgba(0,0,0,0.5)", color: "white", backdropFilter: "blur(4px)" }}
-              title="Feature this image"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              Feature
             </button>
             <button
+              className="flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:bg-gray-100"
               onClick={(e) => { e.stopPropagation(); onRemove(img.id); }}
-              className="w-7 h-7 rounded-full flex items-center justify-center cursor-pointer"
-              style={{ background: "rgba(0,0,0,0.5)", color: "white", backdropFilter: "blur(4px)" }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              Remove
             </button>
           </div>
         </div>
