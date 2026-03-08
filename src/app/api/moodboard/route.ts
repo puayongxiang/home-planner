@@ -7,14 +7,16 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const db = readDB();
   const crawledMap = new Map(db.crawledImages.map((c) => [c.id, c]));
-  const enriched = db.moodboardImages.map((m) => {
-    const crawled = crawledMap.get(m.crawledImageId);
-    return {
-      ...m,
-      roomType: crawled?.roomType || "Uncategorised",
-      style: crawled?.style || "Uncategorised",
-    };
-  });
+  const enriched = db.moodboardImages
+    .map((m) => {
+      const crawled = crawledMap.get(m.crawledImageId);
+      return {
+        ...m,
+        roomType: crawled?.roomType || "Uncategorised",
+        style: crawled?.style || "Uncategorised",
+      };
+    })
+    .sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime());
   return NextResponse.json(enriched);
 }
 
@@ -45,7 +47,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const { id, comment } = await req.json();
+  const body = await req.json();
+  const { id } = body;
   const db = readDB();
 
   const image = db.moodboardImages.find((m) => m.id === id);
@@ -53,7 +56,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  image.comment = comment;
+  if ("comment" in body) image.comment = body.comment;
+  if ("featured" in body) image.featured = body.featured;
   writeDB(db);
 
   return NextResponse.json(image);

@@ -38,4 +38,5 @@ export interface MoodboardImage {
   imageUrl: string;
   comment: string;
   addedAt: string;
+  featured?: boolean;
 }
