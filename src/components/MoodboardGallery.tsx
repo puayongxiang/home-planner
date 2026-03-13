@@ -450,8 +450,9 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
           className="sticky z-20 backdrop-blur-md"
           style={{ top: "49px", background: "rgba(250, 250, 247, 0.85)", borderBottom: "1px solid var(--border-light)" }}
         >
+          {/* Desktop: single row */}
           <div
-            className="max-w-[1800px] mx-auto px-3 sm:px-6 py-2.5 flex items-center gap-2 overflow-x-auto"
+            className="hidden sm:flex max-w-[1800px] mx-auto px-6 py-2.5 items-center gap-2 overflow-x-auto"
             style={{ scrollbarWidth: "none" }}
           >
             <span className="shrink-0 text-xs uppercase tracking-wider mr-1" style={{ color: "var(--text-muted)", fontWeight: 500, letterSpacing: "0.08em" }}>
@@ -461,7 +462,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
               <button
                 key={room}
                 onClick={() => setFilterRoom(filterRoom === room && room !== "All" ? "All" : room)}
-                className="shrink-0 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-medium cursor-pointer transition-all"
+                className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all"
                 style={{
                   background: filterRoom === room ? "var(--text-primary)" : "var(--bg-card)",
                   color: filterRoom === room ? "var(--bg-primary)" : "var(--text-secondary)",
@@ -481,7 +482,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
                   <button
                     key={style}
                     onClick={() => setFilterStyle(filterStyle === style && style !== "All" ? "All" : style)}
-                    className="shrink-0 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-medium cursor-pointer transition-all"
+                    className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all"
                     style={{
                       background: filterStyle === style ? "var(--text-primary)" : "var(--bg-card)",
                       color: filterStyle === style ? "var(--bg-primary)" : "var(--text-secondary)",
@@ -492,6 +493,50 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
                   </button>
                 ))}
               </>
+            )}
+          </div>
+
+          {/* Mobile: stacked rows, each horizontally scrollable */}
+          <div className="sm:hidden px-3 py-2 flex flex-col gap-2">
+            <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+              <span className="shrink-0 text-[10px] uppercase tracking-wider mr-0.5" style={{ color: "var(--text-muted)", fontWeight: 500, letterSpacing: "0.08em" }}>
+                Room
+              </span>
+              {["All", ...rooms].map((room) => (
+                <button
+                  key={room}
+                  onClick={() => setFilterRoom(filterRoom === room && room !== "All" ? "All" : room)}
+                  className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium cursor-pointer transition-all"
+                  style={{
+                    background: filterRoom === room ? "var(--text-primary)" : "var(--bg-card)",
+                    color: filterRoom === room ? "var(--bg-primary)" : "var(--text-secondary)",
+                    border: `1px solid ${filterRoom === room ? "var(--text-primary)" : "var(--border-light)"}`,
+                  }}
+                >
+                  {room}
+                </button>
+              ))}
+            </div>
+            {styles.length > 1 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+                <span className="shrink-0 text-[10px] uppercase tracking-wider mr-0.5" style={{ color: "var(--text-muted)", fontWeight: 500, letterSpacing: "0.08em" }}>
+                  Style
+                </span>
+                {["All", ...styles].map((style) => (
+                  <button
+                    key={style}
+                    onClick={() => setFilterStyle(filterStyle === style && style !== "All" ? "All" : style)}
+                    className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-medium cursor-pointer transition-all"
+                    style={{
+                      background: filterStyle === style ? "var(--text-primary)" : "var(--bg-card)",
+                      color: filterStyle === style ? "var(--bg-primary)" : "var(--text-secondary)",
+                      border: `1px solid ${filterStyle === style ? "var(--text-primary)" : "var(--border-light)"}`,
+                    }}
+                  >
+                    {style}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </nav>
