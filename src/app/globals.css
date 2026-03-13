@@ -49,6 +49,23 @@ body::before {
   z-index: 9999;
 }
 
+/* Prevent overscroll/pull-to-refresh when in lightbox */
+.lightbox-open {
+  overflow: hidden;
+  touch-action: none;
+}
+
+/* Grid card images: natural height on mobile, cropped on larger screens */
+.grid-card-img {
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .grid-card-img {
+    aspect-ratio: 4/3;
+    object-fit: cover;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

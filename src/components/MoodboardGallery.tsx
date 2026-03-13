@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { MoodboardImage, Stroke, DrawTool, ROOM_TYPES, STYLES } from "@/lib/types";
 import AnnotationCanvas from "@/components/AnnotationCanvas";
@@ -76,6 +76,42 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
   const gridImages = useMemo(() => filteredImages.filter((img) => !img.featured), [filteredImages]);
 
   const lightboxImage = lightboxIndex !== null ? filteredImages[lightboxIndex] : null;
+
+  // Touch swipe for lightbox
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (isDrawMode) return;
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+  }, [isDrawMode]);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (isDrawMode || !touchStartRef.current) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    const dt = Date.now() - touchStartRef.current.time;
+    touchStartRef.current = null;
+    // Must be horizontal swipe: |dx| > 50px, more horizontal than vertical, under 500ms
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 500) {
+      if (dx < 0) {
+        // Swipe left → next
+        setLightboxIndex((i) => (i !== null ? Math.min(i + 1, filteredImages.length - 1) : null));
+      } else {
+        // Swipe right → prev
+        setLightboxIndex((i) => (i !== null ? Math.max(i - 1, 0) : null));
+      }
+    }
+  }, [isDrawMode, filteredImages.length]);
+
+  // Lock body scroll when lightbox is open (prevents mobile scroll-behind)
+  useEffect(() => {
+    if (lightboxIndex !== null) {
+      document.body.classList.add("lightbox-open");
+    } else {
+      document.body.classList.remove("lightbox-open");
+    }
+    return () => document.body.classList.remove("lightbox-open");
+  }, [lightboxIndex]);
 
   // Reset draw mode when switching images
   useEffect(() => {
@@ -252,9 +288,9 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
         className="sticky top-0 z-30 backdrop-blur-md"
         style={{ background: "rgba(250, 250, 247, 0.9)", borderBottom: "1px solid var(--border-light)" }}
       >
-        <div className="max-w-[1800px] mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-5">
-            <h1 className="text-2xl tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+        <div className="max-w-[1800px] mx-auto px-3 sm:px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-5">
+            <h1 className="text-xl sm:text-2xl tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
               Moodcraft
             </h1>
             {images.length > 0 && (
@@ -294,7 +330,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
           style={{ top: "49px", background: "rgba(250, 250, 247, 0.85)", borderBottom: "1px solid var(--border-light)" }}
         >
           <div
-            className="max-w-[1800px] mx-auto px-6 py-2.5 flex items-center gap-2 overflow-x-auto"
+            className="max-w-[1800px] mx-auto px-3 sm:px-6 py-2.5 flex items-center gap-2 overflow-x-auto"
             style={{ scrollbarWidth: "none" }}
           >
             <span className="shrink-0 text-xs uppercase tracking-wider mr-1" style={{ color: "var(--text-muted)", fontWeight: 500, letterSpacing: "0.08em" }}>
@@ -304,7 +340,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
               <button
                 key={room}
                 onClick={() => setFilterRoom(filterRoom === room && room !== "All" ? "All" : room)}
-                className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all"
+                className="shrink-0 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-medium cursor-pointer transition-all"
                 style={{
                   background: filterRoom === room ? "var(--text-primary)" : "var(--bg-card)",
                   color: filterRoom === room ? "var(--bg-primary)" : "var(--text-secondary)",
@@ -324,7 +360,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
                   <button
                     key={style}
                     onClick={() => setFilterStyle(filterStyle === style && style !== "All" ? "All" : style)}
-                    className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all"
+                    className="shrink-0 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-medium cursor-pointer transition-all"
                     style={{
                       background: filterStyle === style ? "var(--text-primary)" : "var(--bg-card)",
                       color: filterStyle === style ? "var(--bg-primary)" : "var(--text-secondary)",
@@ -340,7 +376,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
         </nav>
       )}
 
-      <main className="max-w-[1800px] mx-auto px-6 py-8">
+      <main className="max-w-[1800px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
         {images.length > 0 ? (
           filteredImages.length > 0 ? (
             <div>
@@ -361,7 +397,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
 
               {/* Uniform grid */}
               {gridImages.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5">
                   {gridImages.map((img, i) => (
                     <GridCard
                       key={img.id}
@@ -428,7 +464,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
 
           {showAddUrl && (
             <div
-              className="fixed bottom-24 right-6 z-40 w-[380px] rounded-2xl p-5 shadow-2xl"
+              className="fixed bottom-24 right-3 left-3 sm:left-auto sm:right-6 z-40 sm:w-[380px] rounded-2xl p-5 shadow-2xl"
               style={{ background: "var(--bg-card)", border: "1px solid var(--border-light)", animation: "fabPanelIn 0.2s ease-out" }}
             >
               <h3 className="text-base mb-3" style={{ fontFamily: "var(--font-display)" }}>Add image</h3>
@@ -471,29 +507,31 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
       {lightboxImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: "rgba(0, 0, 0, 0.85)" }}
+          style={{ background: "rgba(0, 0, 0, 0.92)" }}
           onClick={() => { if (!isDrawMode) setLightboxIndex(null); }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         >
           {/* Close button */}
-          <button className="absolute top-5 right-5 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80 z-10" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={(e) => { e.stopPropagation(); setLightboxIndex(null); }}>
+          <button className="absolute top-3 right-3 sm:top-5 sm:right-5 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80 z-10" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={(e) => { e.stopPropagation(); setLightboxIndex(null); }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
-          {/* Nav arrows */}
+          {/* Nav arrows — hidden on mobile (use swipe instead) */}
           {!isDrawMode && lightboxIndex! > 0 && (
-            <button className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i! - 1); }}>
+            <button className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full hidden sm:flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i! - 1); }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
             </button>
           )}
           {!isDrawMode && lightboxIndex! < filteredImages.length - 1 && (
-            <button className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i! + 1); }}>
+            <button className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full hidden sm:flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i! + 1); }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
           )}
-          <div className="max-w-[90vw] max-h-[85vh] flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full sm:max-w-[90vw] max-h-[85vh] flex flex-col items-center px-2 sm:px-0" onClick={(e) => e.stopPropagation()}>
             {/* Image + canvas overlay */}
             <div ref={lightboxImageContainerRef} className="relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img key={lightboxImage.id} src={lightboxImage.imageUrl} alt="Moodboard image" className="max-w-full max-h-[65vh] object-contain rounded-lg" style={{ animation: "lightboxIn 0.2s ease-out" }} referrerPolicy="no-referrer" />
+              <img key={lightboxImage.id} src={lightboxImage.imageUrl} alt="Moodboard image" className="max-w-full max-h-[70vh] sm:max-h-[65vh] object-contain rounded-lg select-none" style={{ animation: "lightboxIn 0.2s ease-out" }} draggable={false} referrerPolicy="no-referrer" />
               <AnnotationCanvas
                 containerRef={lightboxImageContainerRef}
                 annotations={lightboxImage.annotations || []}
@@ -507,7 +545,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
 
             {/* Drawing toolbar — dev only */}
             {!isStatic && (
-              <div className="mt-3 flex items-center gap-2 px-4 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.12)" }}>
+              <div className="mt-3 hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.12)" }}>
                 {/* View mode (cursor) */}
                 <button
                   className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer transition-all"
@@ -598,8 +636,14 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
               </div>
             )}
 
+            {/* Swipe hint — mobile only, shown briefly */}
+            <div className="mt-2 flex sm:hidden items-center gap-3 text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+              {lightboxIndex! > 0 && <span>&larr;</span>}
+              <span>{lightboxIndex! + 1} / {filteredImages.length}</span>
+              {lightboxIndex! < filteredImages.length - 1 && <span>&rarr;</span>}
+            </div>
             {/* Info + comment */}
-            <div className="mt-3 flex flex-col items-center gap-2 w-full max-w-lg">
+            <div className="mt-2 sm:mt-3 flex flex-col items-center gap-2 w-full max-w-lg px-2 sm:px-0">
               <div className="flex items-center gap-2 flex-wrap justify-center">
                 {!isStatic && (lightboxImage.roomType === "Uncategorised" || lightboxImage.roomType === "") ? (
                   <div className="flex items-center gap-1.5 flex-wrap justify-center">
@@ -760,7 +804,7 @@ function HeroCard({
           src={img.imageUrl}
           alt="Featured"
           className="w-full object-cover card-image"
-          style={{ aspectRatio: "21/9" }}
+          style={{ aspectRatio: "16/9" }}
           referrerPolicy="no-referrer"
         />
         <StrokesOverlay annotations={img.annotations} />
@@ -835,8 +879,7 @@ function GridCard({
           <img
             src={img.imageUrl}
             alt="Saved interior design"
-            className="w-full object-cover card-image"
-            style={{ aspectRatio: "4/3" }}
+            className="w-full card-image grid-card-img"
             referrerPolicy="no-referrer"
           />
           <StrokesOverlay annotations={img.annotations} />
