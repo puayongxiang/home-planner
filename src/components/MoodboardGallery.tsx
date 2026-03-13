@@ -77,27 +77,148 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
 
   const lightboxImage = lightboxIndex !== null ? filteredImages[lightboxIndex] : null;
 
-  // Touch swipe for lightbox
+  // Zoom state for lightbox
+  const [zoomScale, setZoomScale] = useState(1);
+  const [zoomOffset, setZoomOffset] = useState({ x: 0, y: 0 });
+  const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
+  const panRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const lastTapRef = useRef<number>(0);
+  const zoomScaleRef = useRef(1);
+  const zoomOffsetRef = useRef({ x: 0, y: 0 });
+
+  // Keep refs in sync with state
+  useEffect(() => { zoomScaleRef.current = zoomScale; }, [zoomScale]);
+  useEffect(() => { zoomOffsetRef.current = zoomOffset; }, [zoomOffset]);
+
+  // Reset zoom when switching images
+  useEffect(() => {
+    setZoomScale(1);
+    setZoomOffset({ x: 0, y: 0 });
+    pinchRef.current = null;
+    panRef.current = null;
+  }, [lightboxIndex]);
+
+  // Touch handling for lightbox: swipe, pinch-to-zoom, double-tap, pan
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+
+  const getTouchDist = (touches: React.TouchList) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (isDrawMode) return;
-    const touch = e.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+
+    if (e.touches.length === 2) {
+      // Pinch start
+      e.preventDefault();
+      pinchRef.current = { dist: getTouchDist(e.touches), scale: zoomScaleRef.current };
+      panRef.current = null;
+      touchStartRef.current = null;
+      return;
+    }
+
+    if (e.touches.length === 1) {
+      const now = Date.now();
+      const touch = e.touches[0];
+
+      // Double-tap detection
+      if (now - lastTapRef.current < 300) {
+        e.preventDefault();
+        lastTapRef.current = 0;
+        if (zoomScaleRef.current > 1) {
+          setZoomScale(1);
+          setZoomOffset({ x: 0, y: 0 });
+        } else {
+          setZoomScale(2.5);
+          // Zoom toward tap point
+          const container = lightboxImageContainerRef.current;
+          if (container) {
+            const rect = container.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            setZoomOffset({
+              x: (cx - touch.clientX) * 1.5,
+              y: (cy - touch.clientY) * 1.5,
+            });
+          }
+        }
+        touchStartRef.current = null;
+        return;
+      }
+      lastTapRef.current = now;
+
+      if (zoomScaleRef.current > 1) {
+        // Pan start
+        panRef.current = { x: touch.clientX, y: touch.clientY, ox: zoomOffsetRef.current.x, oy: zoomOffsetRef.current.y };
+        touchStartRef.current = null;
+      } else {
+        // Swipe start
+        touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+      }
+    }
   }, [isDrawMode]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (isDrawMode) return;
+
+    if (e.touches.length === 2 && pinchRef.current) {
+      // Pinch zoom
+      e.preventDefault();
+      const newDist = getTouchDist(e.touches);
+      const newScale = Math.min(5, Math.max(1, pinchRef.current.scale * (newDist / pinchRef.current.dist)));
+      setZoomScale(newScale);
+      if (newScale <= 1) {
+        setZoomOffset({ x: 0, y: 0 });
+      }
+      return;
+    }
+
+    if (e.touches.length === 1 && panRef.current && zoomScaleRef.current > 1) {
+      // Pan while zoomed
+      e.preventDefault();
+      const touch = e.touches[0];
+      setZoomOffset({
+        x: panRef.current.ox + (touch.clientX - panRef.current.x),
+        y: panRef.current.oy + (touch.clientY - panRef.current.y),
+      });
+    }
+  }, [isDrawMode]);
+
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (isDrawMode || !touchStartRef.current) return;
+    if (isDrawMode) return;
+
+    // End pinch
+    if (pinchRef.current) {
+      if (e.touches.length < 2) {
+        // Snap to 1 if close
+        if (zoomScaleRef.current < 1.15) {
+          setZoomScale(1);
+          setZoomOffset({ x: 0, y: 0 });
+        }
+        pinchRef.current = null;
+      }
+      return;
+    }
+
+    // End pan
+    if (panRef.current) {
+      panRef.current = null;
+      return;
+    }
+
+    // Swipe detection (only at 1x zoom)
+    if (!touchStartRef.current) return;
     const touch = e.changedTouches[0];
     const dx = touch.clientX - touchStartRef.current.x;
     const dy = touch.clientY - touchStartRef.current.y;
     const dt = Date.now() - touchStartRef.current.time;
     touchStartRef.current = null;
-    // Must be horizontal swipe: |dx| > 50px, more horizontal than vertical, under 500ms
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 500) {
       if (dx < 0) {
-        // Swipe left → next
         setLightboxIndex((i) => (i !== null ? Math.min(i + 1, filteredImages.length - 1) : null));
       } else {
-        // Swipe right → prev
         setLightboxIndex((i) => (i !== null ? Math.max(i - 1, 0) : null));
       }
     }
@@ -510,6 +631,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
           style={{ background: "rgba(0, 0, 0, 0.92)" }}
           onClick={() => { if (!isDrawMode) setLightboxIndex(null); }}
           onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
           {/* Close button */}
@@ -529,7 +651,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
           )}
           <div className="w-full sm:max-w-[90vw] max-h-[85vh] flex flex-col items-center px-2 sm:px-0" onClick={(e) => e.stopPropagation()}>
             {/* Image + canvas overlay */}
-            <div ref={lightboxImageContainerRef} className="relative">
+            <div ref={lightboxImageContainerRef} className="relative" style={{ transform: `scale(${zoomScale}) translate(${zoomOffset.x / zoomScale}px, ${zoomOffset.y / zoomScale}px)`, transition: pinchRef.current || panRef.current ? 'none' : 'transform 0.2s ease-out', touchAction: zoomScale > 1 ? 'none' : 'pan-y' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img key={lightboxImage.id} src={lightboxImage.imageUrl} alt="Moodboard image" className="max-w-full max-h-[70vh] sm:max-h-[65vh] object-contain rounded-lg select-none" style={{ animation: "lightboxIn 0.2s ease-out" }} draggable={false} referrerPolicy="no-referrer" />
               <AnnotationCanvas
@@ -636,11 +758,23 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
               </div>
             )}
 
+            {/* Zoom reset button — shown when zoomed */}
+            {zoomScale > 1 && (
+              <button
+                className="absolute top-3 left-3 sm:top-5 sm:left-5 px-3 py-1.5 rounded-full flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-80 z-10 text-xs font-medium"
+                style={{ background: "rgba(255,255,255,0.2)", color: "white", backdropFilter: "blur(8px)" }}
+                onClick={(e) => { e.stopPropagation(); setZoomScale(1); setZoomOffset({ x: 0, y: 0 }); }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /><line x1="8" y1="11" x2="14" y2="11" /></svg>
+                {Math.round(zoomScale * 100)}%
+              </button>
+            )}
             {/* Swipe hint — mobile only, shown briefly */}
             <div className="mt-2 flex sm:hidden items-center gap-3 text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
               {lightboxIndex! > 0 && <span>&larr;</span>}
               <span>{lightboxIndex! + 1} / {filteredImages.length}</span>
               {lightboxIndex! < filteredImages.length - 1 && <span>&rarr;</span>}
+              {zoomScale <= 1 && <span style={{ marginLeft: 4 }}>pinch to zoom</span>}
             </div>
             {/* Info + comment */}
             <div className="mt-2 sm:mt-3 flex flex-col items-center gap-2 w-full max-w-lg px-2 sm:px-0">
