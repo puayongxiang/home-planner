@@ -22,6 +22,14 @@ export const STYLES = [
   "Industrial",
 ] as const;
 
+export const SOURCES = [
+  "Qanvast",
+  "StackedHomes",
+  "Hometrust",
+  "URL Import",
+  "Manual",
+] as const;
+
 export interface CrawledImage {
   id: string;
   sourceUrl: string;
@@ -29,6 +37,7 @@ export interface CrawledImage {
   alt: string;
   roomType: string;
   style: string;
+  source?: string;
   crawledAt: string;
 }
 

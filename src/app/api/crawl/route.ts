@@ -3,7 +3,6 @@ import puppeteer from "puppeteer";
 import { v4 as uuidv4 } from "uuid";
 import { readDB, writeDB, CrawledImage } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
 
 const BASE_URL = "https://qanvast.com/sg/interior-design-singapore";
 
@@ -128,6 +127,7 @@ export async function POST(req: NextRequest) {
               alt: e.alt,
               roomType: room,
               style: styleParam,
+              source: "Qanvast",
               crawledAt: new Date().toISOString(),
             }));
 
@@ -169,6 +169,22 @@ export async function POST(req: NextRequest) {
       Connection: "keep-alive",
     },
   });
+}
+
+export async function PUT(req: NextRequest) {
+  const { id, roomType, style } = await req.json();
+  if (!id) {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+  const db = readDB();
+  const image = db.crawledImages.find((img) => img.id === id);
+  if (!image) {
+    return NextResponse.json({ error: "Image not found" }, { status: 404 });
+  }
+  if (roomType !== undefined) image.roomType = roomType;
+  if (style !== undefined) image.style = style;
+  writeDB(db);
+  return NextResponse.json(image);
 }
 
 export async function GET() {

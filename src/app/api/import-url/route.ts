@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { readDB, writeDB } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
 
 const ROOM_KEYWORDS: Record<string, string> = {
   "living room": "Living Room",
@@ -165,6 +164,14 @@ export async function POST(req: NextRequest) {
     for (const img of scraped) {
       if (existingUrls.has(img.src)) continue;
 
+      const source = url.includes("hometrust.sg")
+        ? "Hometrust"
+        : url.includes("qanvast.com")
+          ? "Qanvast"
+          : url.includes("stackedhomes.com")
+            ? "StackedHomes"
+            : "URL Import";
+
       const image = {
         id: uuidv4(),
         sourceUrl: url,
@@ -172,6 +179,7 @@ export async function POST(req: NextRequest) {
         alt: img.alt,
         roomType: parseRoomFromAlt(img.alt),
         style: parseStyleFromAlt(img.alt),
+        source,
         crawledAt: new Date().toISOString(),
       };
 

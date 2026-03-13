@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { readDB, writeDB } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
 
 export async function GET() {
   const db = readDB();

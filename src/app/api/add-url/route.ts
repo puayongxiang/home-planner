@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { readDB, writeDB } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
 
 async function extractOgImage(url: string): Promise<{ imageUrl: string; title: string }> {
   const res = await fetch(url, {
@@ -79,6 +78,7 @@ export async function POST(req: NextRequest) {
       alt: title,
       roomType: roomType || "Uncategorised",
       style: style || "Uncategorised",
+      source: "Manual",
       crawledAt: new Date().toISOString(),
     };
 

@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
+const isStaticExport = !!process.env.STATIC_EXPORT;
+
 const nextConfig: NextConfig = {
+  output: isStaticExport ? "export" : undefined,
   images: {
+    unoptimized: isStaticExport,
     remotePatterns: [
       {
         protocol: "https",
@@ -12,6 +16,9 @@ const nextConfig: NextConfig = {
         hostname: "*.qanvast.com",
       },
     ],
+  },
+  env: {
+    NEXT_PUBLIC_STATIC: isStaticExport ? "1" : "",
   },
   serverExternalPackages: ["puppeteer"],
 };

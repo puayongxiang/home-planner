@@ -7,6 +7,7 @@ import {
   MoodboardImage,
   ROOM_TYPES,
   STYLES,
+  SOURCES,
 } from "@/lib/types";
 
 export default function BrowsePage() {
@@ -26,6 +27,7 @@ export default function BrowsePage() {
   const [incomingImages, setIncomingImages] = useState<CrawledImage[]>([]);
   const [filterRoom, setFilterRoom] = useState<string>("All");
   const [filterStyle, setFilterStyle] = useState<string>("All");
+  const [filterSource, setFilterSource] = useState<string>("All");
   const [focusIndex, setFocusIndex] = useState(0);
   const [showCrawlForm, setShowCrawlForm] = useState(false);
   const [showAddUrl, setShowAddUrl] = useState(false);
@@ -38,6 +40,13 @@ export default function BrowsePage() {
   const [importUrl, setImportUrl] = useState("");
   const [importStatus, setImportStatus] = useState("");
   const [importing, setImporting] = useState(false);
+  const [showStackedHomes, setShowStackedHomes] = useState(false);
+  const [shStartPage, setShStartPage] = useState<number | "">(1);
+  const [shEndPage, setShEndPage] = useState<number | "">(5);
+  const [shCrawling, setShCrawling] = useState(false);
+  const [shProgress, setShProgress] = useState("");
+  const [shStatus, setShStatus] = useState("");
+  const [shIncoming, setShIncoming] = useState<CrawledImage[]>([]);
   const spotlightRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +74,8 @@ export default function BrowsePage() {
 
   const filteredImages = availableImages
     .filter((img) => filterRoom === "All" || img.roomType === filterRoom)
-    .filter((img) => filterStyle === "All" || img.style === filterStyle);
+    .filter((img) => filterStyle === "All" || img.style === filterStyle)
+    .filter((img) => filterSource === "All" || (img.source || "Unknown") === filterSource);
 
   const roomCounts = availableImages.reduce<Record<string, number>>(
     (acc, img) => {
@@ -83,12 +93,21 @@ export default function BrowsePage() {
     {}
   );
 
+  const sourceCounts = availableImages.reduce<Record<string, number>>(
+    (acc, img) => {
+      const s = img.source || "Unknown";
+      acc[s] = (acc[s] || 0) + 1;
+      return acc;
+    },
+    {}
+  );
+
   const currentImage = filteredImages[focusIndex] || null;
 
   // Reset focus when filters change
   useEffect(() => {
     setFocusIndex(0);
-  }, [filterRoom, filterStyle]);
+  }, [filterRoom, filterStyle, filterSource]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -295,6 +314,69 @@ export default function BrowsePage() {
     }
   }
 
+  async function handleStackedHomesCrawl() {
+    setShCrawling(true);
+    setShProgress("");
+    setShStatus("");
+    setShIncoming([]);
+
+    try {
+      const res = await fetch("/api/crawl-stackedhomes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startPage: shStartPage || 1, endPage: shEndPage || 20 }),
+      });
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) {
+        setShStatus("Crawl failed: no response stream");
+        setShCrawling(false);
+        return;
+      }
+
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const match = line.match(/^data: (.+)$/);
+          if (!match) continue;
+          const event = JSON.parse(match[1]);
+
+          if (event.type === "progress") {
+            setShProgress(event.message);
+          } else if (event.type === "article_done") {
+            setShProgress(`Page ${event.page}: "${event.title}" — ${event.found} images (${event.newCount} new)`);
+            if (event.images?.length > 0) {
+              setShIncoming((prev) => [...prev, ...event.images]);
+            }
+          } else if (event.type === "done") {
+            setShStatus(
+              `Done! Found ${event.totalFound} images (${event.totalNew} new) across ${event.pagesCrawled} pages`
+            );
+            setShProgress("");
+            setShIncoming([]);
+            await loadImages();
+          } else if (event.type === "error") {
+            setShStatus(event.error || "Crawl failed");
+            setShProgress("");
+          }
+        }
+      }
+    } catch {
+      setShStatus("Crawl failed. Check console for details.");
+      setShProgress("");
+    } finally {
+      setShCrawling(false);
+    }
+  }
+
   async function handleImport() {
     if (!importUrl.trim()) return;
     setImporting(true);
@@ -361,7 +443,17 @@ export default function BrowsePage() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => { setShowImport(!showImport); if (!showImport) { setShowAddUrl(false); setShowCrawlForm(false); } }}
+              onClick={() => { setShowStackedHomes(!showStackedHomes); if (!showStackedHomes) { setShowImport(false); setShowAddUrl(false); setShowCrawlForm(false); } }}
+              className="text-sm cursor-pointer transition-colors"
+              style={{
+                color: showStackedHomes ? "var(--accent-terracotta)" : "var(--text-secondary)",
+                fontWeight: 500,
+              }}
+            >
+              {showStackedHomes ? "Close" : "StackedHomes"}
+            </button>
+            <button
+              onClick={() => { setShowImport(!showImport); if (!showImport) { setShowAddUrl(false); setShowCrawlForm(false); setShowStackedHomes(false); } }}
               className="text-sm cursor-pointer transition-colors"
               style={{
                 color: showImport ? "var(--accent-terracotta)" : "var(--text-secondary)",
@@ -371,7 +463,7 @@ export default function BrowsePage() {
               {showImport ? "Close" : "Import"}
             </button>
             <button
-              onClick={() => { setShowAddUrl(!showAddUrl); if (!showAddUrl) { setShowCrawlForm(false); setShowImport(false); } }}
+              onClick={() => { setShowAddUrl(!showAddUrl); if (!showAddUrl) { setShowCrawlForm(false); setShowImport(false); setShowStackedHomes(false); } }}
               className="text-sm cursor-pointer transition-colors"
               style={{
                 color: showAddUrl ? "var(--accent-terracotta)" : "var(--text-secondary)",
@@ -381,7 +473,7 @@ export default function BrowsePage() {
               {showAddUrl ? "Close" : "+ URL"}
             </button>
             <button
-              onClick={() => { setShowCrawlForm(!showCrawlForm); if (!showCrawlForm) { setShowAddUrl(false); setShowImport(false); } }}
+              onClick={() => { setShowCrawlForm(!showCrawlForm); if (!showCrawlForm) { setShowAddUrl(false); setShowImport(false); setShowStackedHomes(false); } }}
               className="text-sm cursor-pointer transition-colors"
               style={{
                 color: showCrawlForm ? "var(--accent-terracotta)" : "var(--text-secondary)",
@@ -414,6 +506,126 @@ export default function BrowsePage() {
       </header>
 
       <main className="max-w-[1400px] mx-auto px-6">
+        {/* StackedHomes Crawl */}
+        {showStackedHomes && (
+          <div
+            className="my-6 p-6 rounded-2xl"
+            style={{
+              background: "var(--bg-card)",
+              border: "1px solid var(--border-light)",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+            }}
+          >
+            <h2
+              className="text-lg mb-2"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              Crawl StackedHomes
+            </h2>
+            <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
+              Systematically crawl Home Tours articles from StackedHomes. Each listing page has ~12 articles, each with multiple interior photos. There are 20 pages total.
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="text-sm flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                From page
+                <input
+                  type="number"
+                  value={shStartPage}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setShStartPage(v === "" ? "" : Math.max(1, Math.min(20, Number(v))));
+                  }}
+                  min={1}
+                  max={20}
+                  className="w-16 px-2 py-1.5 text-sm rounded-lg focus:outline-none"
+                  style={{
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border-light)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </label>
+              <label className="text-sm flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+                to page
+                <input
+                  type="number"
+                  value={shEndPage}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setShEndPage(v === "" ? "" : Math.max(1, Math.min(20, Number(v))));
+                  }}
+                  placeholder="20"
+                  min={1}
+                  max={20}
+                  className="w-16 px-2 py-1.5 text-sm rounded-lg focus:outline-none"
+                  style={{
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border-light)",
+                    color: "var(--text-primary)",
+                  }}
+                />
+              </label>
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                (~{((shEndPage || 20) - (shStartPage || 1) + 1) * 12} articles)
+              </span>
+              <button
+                onClick={handleStackedHomesCrawl}
+                disabled={shCrawling}
+                className="px-6 py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                style={{
+                  background: "var(--accent-sage)",
+                  color: "white",
+                }}
+              >
+                {shCrawling ? "Crawling..." : `Crawl pages ${shStartPage || 1}–${shEndPage || 20}`}
+              </button>
+            </div>
+            {shProgress && (
+              <p className="text-sm mt-3" style={{ color: "var(--text-secondary)" }}>
+                {shProgress}
+              </p>
+            )}
+            {shStatus && !shProgress && (
+              <p
+                className="text-sm mt-3"
+                style={{
+                  color: shStatus.startsWith("Done") ? "var(--accent-sage)" : "var(--accent-red)",
+                }}
+              >
+                {shStatus}
+              </p>
+            )}
+            {shIncoming.length > 0 && (
+              <div className="mt-5">
+                <p className="text-xs font-medium uppercase tracking-wider mb-3" style={{ color: "var(--text-muted)", letterSpacing: "0.08em" }}>
+                  {shIncoming.length} images found so far
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {shIncoming.slice(-30).map((img) => (
+                    <div
+                      key={img.id}
+                      className="rounded-lg overflow-hidden"
+                      style={{
+                        width: "72px",
+                        height: "54px",
+                        animation: "fadeIn 0.3s ease-out",
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.imageUrl}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Import from page */}
         {showImport && (
           <div
@@ -817,6 +1029,29 @@ export default function BrowsePage() {
                 />
               ))}
             </div>
+            {Object.keys(sourceCounts).length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span
+                  className="text-xs uppercase tracking-wider mr-2"
+                  style={{ color: "var(--text-muted)", fontWeight: 500, letterSpacing: "0.08em" }}
+                >
+                  Source
+                </span>
+                <FilterPill
+                  label={`All (${availableImages.length})`}
+                  active={filterSource === "All"}
+                  onClick={() => setFilterSource("All")}
+                />
+                {Object.entries(sourceCounts).map(([source, count]) => (
+                  <FilterPill
+                    key={source}
+                    label={`${source} (${count})`}
+                    active={filterSource === source}
+                    onClick={() => setFilterSource(source)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -856,7 +1091,7 @@ export default function BrowsePage() {
                   >
                     <div>
                       <span className="text-white/70 text-xs font-medium uppercase tracking-wider">
-                        {currentImage.roomType} &middot; {currentImage.style}
+                        {currentImage.source && <>{currentImage.source} &middot; </>}{currentImage.roomType} &middot; {currentImage.style}
                       </span>
                       <p className="text-white/50 text-xs mt-0.5">
                         {focusIndex + 1} of {filteredImages.length}
@@ -865,6 +1100,51 @@ export default function BrowsePage() {
                   </div>
                 )}
               </div>
+
+              {/* Room type tagger for uncategorised images */}
+              {currentImage && (currentImage.roomType === "Uncategorised" || currentImage.roomType === "") && (
+                <div
+                  className="mt-3 p-3 rounded-xl flex flex-wrap items-center gap-2"
+                  style={{
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border-light)",
+                  }}
+                >
+                  <span
+                    className="text-xs uppercase tracking-wider mr-1"
+                    style={{ color: "var(--text-muted)", fontWeight: 500, letterSpacing: "0.08em" }}
+                  >
+                    Tag room
+                  </span>
+                  {ROOM_TYPES.map((room) => (
+                    <button
+                      key={room}
+                      onClick={async () => {
+                        const res = await fetch("/api/crawl", {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ id: currentImage.id, roomType: room }),
+                        });
+                        if (res.ok) {
+                          setCrawledImages((prev) =>
+                            prev.map((img) =>
+                              img.id === currentImage.id ? { ...img, roomType: room } : img
+                            )
+                          );
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all hover:scale-105"
+                      style={{
+                        background: "transparent",
+                        color: "var(--text-secondary)",
+                        border: "1px solid var(--border-medium)",
+                      }}
+                    >
+                      {room}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Action buttons */}
               {currentImage && (
