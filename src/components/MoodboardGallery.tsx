@@ -503,7 +503,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
             <div>
               {/* Featured hero section */}
               {featuredImages.length > 0 && (
-                <div className={`mb-8 ${featuredImages.length === 1 ? "" : "grid gap-5"}`} style={featuredImages.length > 1 ? { gridTemplateColumns: `repeat(${Math.min(featuredImages.length, 2)}, 1fr)` } : undefined}>
+                <div className={`mb-8 ${featuredImages.length === 1 ? "" : "grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5"}`}>
                   {featuredImages.map((img) => (
                     <HeroCard
                       key={img.id}
