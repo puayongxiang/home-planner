@@ -8,6 +8,7 @@ export default function IgnoredPage() {
   const [ignoredImages, setIgnoredImages] = useState<CrawledImage[]>([]);
   const [filterRoom, setFilterRoom] = useState<string>("All");
   const [filterStyle, setFilterStyle] = useState<string>("All");
+  const [searchUrl, setSearchUrl] = useState<string>("");
   const [focusIndex, setFocusIndex] = useState(0);
   const stripRef = useRef<HTMLDivElement>(null);
 
@@ -27,6 +28,12 @@ export default function IgnoredPage() {
   }, [loadIgnored]);
 
   const filteredImages = ignoredImages
+    .filter((img) => {
+      if (searchUrl.trim()) {
+        return img.sourceUrl.toLowerCase().includes(searchUrl.trim().toLowerCase());
+      }
+      return true;
+    })
     .filter((img) => filterRoom === "All" || img.roomType === filterRoom)
     .filter((img) => filterStyle === "All" || img.style === filterStyle);
 
@@ -138,6 +145,53 @@ export default function IgnoredPage() {
               >
                 {ignoredImages.length} ignored
               </span>
+            )}
+          </div>
+          <div className="relative flex-1 max-w-md">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={searchUrl}
+              onChange={(e) => {
+                setSearchUrl(e.target.value);
+                setFocusIndex(0);
+              }}
+              placeholder="Search by source URL..."
+              className="w-full pl-9 pr-8 py-2 rounded-full text-sm outline-none transition-all"
+              style={{
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-light)",
+                color: "var(--text-primary)",
+              }}
+            />
+            {searchUrl && (
+              <button
+                onClick={() => {
+                  setSearchUrl("");
+                  setFocusIndex(0);
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer"
+                style={{ color: "var(--text-muted)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
             )}
           </div>
         </div>

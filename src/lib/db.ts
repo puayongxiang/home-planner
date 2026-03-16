@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-export type { CrawledImage, MoodboardImage, FurnitureItem } from "./types";
+export type { CrawledImage, MoodboardImage, FurnitureItem, SavedLink } from "./types";
 
 const DB_PATH = path.join(process.cwd(), "data", "db.json");
 
@@ -10,6 +10,7 @@ interface DB {
   moodboardImages: import("./types").MoodboardImage[];
   ignoredIds: string[];
   furnitureItems: import("./types").FurnitureItem[];
+  savedLinks: import("./types").SavedLink[];
 }
 
 export function readDB(): DB {
@@ -17,6 +18,7 @@ export function readDB(): DB {
   const db = JSON.parse(raw);
   if (!db.ignoredIds) db.ignoredIds = [];
   if (!db.furnitureItems) db.furnitureItems = [];
+  if (!db.savedLinks) db.savedLinks = [];
   return db;
 }
 

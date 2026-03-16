@@ -28,6 +28,9 @@ export const SOURCES = [
   "Hometrust",
   "URL Import",
   "Manual",
+  "Instagram",
+  "Xiaohongshu",
+  "Social",
 ] as const;
 
 export interface CrawledImage {
@@ -69,4 +72,15 @@ export interface FurnitureItem {
   roomType?: string;
   notes?: string;
   addedAt: string;
+}
+
+export interface SavedLink {
+  id: string;
+  url: string;
+  source: string;
+  title?: string;
+  note?: string;
+  roomType?: string;
+  style?: string;
+  savedAt: string;
 }

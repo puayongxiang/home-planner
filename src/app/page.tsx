@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import MoodboardGallery from "@/components/MoodboardGallery";
+import { SavedLink } from "@/lib/types";
 
 function getEnrichedMoodboardImages() {
   const dbPath = path.join(process.cwd(), "data", "db.json");
@@ -25,7 +26,17 @@ function getEnrichedMoodboardImages() {
     );
 }
 
+function getSavedLinks(): SavedLink[] {
+  const dbPath = path.join(process.cwd(), "data", "db.json");
+  const raw = fs.readFileSync(dbPath, "utf-8");
+  const db = JSON.parse(raw);
+  return (db.savedLinks || []).sort(
+    (a: SavedLink, b: SavedLink) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
+  );
+}
+
 export default function Home() {
   const images = getEnrichedMoodboardImages();
-  return <MoodboardGallery initialImages={images} />;
+  const savedLinks = getSavedLinks();
+  return <MoodboardGallery initialImages={images} initialLinks={savedLinks} />;
 }

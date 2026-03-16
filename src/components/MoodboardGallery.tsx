@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { MoodboardImage, Stroke, DrawTool, ROOM_TYPES, STYLES } from "@/lib/types";
+import { MoodboardImage, SavedLink, Stroke, DrawTool, ROOM_TYPES, STYLES } from "@/lib/types";
 import AnnotationCanvas from "@/components/AnnotationCanvas";
 
 interface EnrichedMoodboardImage extends MoodboardImage {
@@ -36,8 +36,33 @@ const ROOM_COLORS: Record<string, string> = {
   Balcony: "#D4884E",
 };
 
-export default function MoodboardGallery({ initialImages }: { initialImages: EnrichedMoodboardImage[] }) {
+const SOURCE_ICONS: Record<string, string> = {
+  Instagram: "IG",
+  Xiaohongshu: "XHS",
+  Pinterest: "Pin",
+  TikTok: "TT",
+  Other: "Link",
+};
+
+const SOURCE_COLORS: Record<string, string> = {
+  Instagram: "#E1306C",
+  Xiaohongshu: "#FE2C55",
+  Pinterest: "#E60023",
+  TikTok: "#000000",
+  Other: "#7D8B6E",
+};
+
+function getEmbedUrl(url: string, source: string): string | null {
+  if (source === "Instagram") {
+    const match = url.match(/instagram\.com\/(p|reel|tv)\/([A-Za-z0-9_-]+)/);
+    if (match) return `https://www.instagram.com/${match[1]}/${match[2]}/embed/`;
+  }
+  return null;
+}
+
+export default function MoodboardGallery({ initialImages, initialLinks = [] }: { initialImages: EnrichedMoodboardImage[]; initialLinks?: SavedLink[] }) {
   const [images, setImages] = useState<EnrichedMoodboardImage[]>(initialImages);
+  const [savedLinks, setSavedLinks] = useState<SavedLink[]>(initialLinks);
   const [filterRoom, setFilterRoom] = useState<string>("All");
   const [filterStyle, setFilterStyle] = useState<string>("All");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -51,6 +76,11 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
   const [drawTool, setDrawTool] = useState<DrawTool>("pen");
   const [drawColor, setDrawColor] = useState("#FF4444");
   const [drawWidth, setDrawWidth] = useState(4);
+  const [viewTab, setViewTab] = useState<"images" | "links">("images");
+  const [addTab, setAddTab] = useState<"image" | "link">("image");
+  const [linkForm, setLinkForm] = useState({ url: "", title: "", note: "", roomType: "", style: "" });
+  const [addingLink, setAddingLink] = useState(false);
+  const [addLinkStatus, setAddLinkStatus] = useState("");
   const lightboxImageContainerRef = useRef<HTMLDivElement>(null);
   const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
@@ -75,7 +105,10 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
   const featuredImages = useMemo(() => filteredImages.filter((img) => img.featured), [filteredImages]);
   const gridImages = useMemo(() => filteredImages.filter((img) => !img.featured), [filteredImages]);
 
-  const lightboxImage = lightboxIndex !== null ? filteredImages[lightboxIndex] : null;
+  // Display-ordered list: featured first, then grid — matches visual layout for lightbox navigation
+  const displayOrderImages = useMemo(() => [...featuredImages, ...gridImages], [featuredImages, gridImages]);
+
+  const lightboxImage = lightboxIndex !== null ? displayOrderImages[lightboxIndex] : null;
 
   // Zoom state for lightbox
   const [zoomScale, setZoomScale] = useState(1);
@@ -217,12 +250,12 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
     touchStartRef.current = null;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && dt < 500) {
       if (dx < 0) {
-        setLightboxIndex((i) => (i !== null ? Math.min(i + 1, filteredImages.length - 1) : null));
+        setLightboxIndex((i) => (i !== null ? Math.min(i + 1, displayOrderImages.length - 1) : null));
       } else {
         setLightboxIndex((i) => (i !== null ? Math.max(i - 1, 0) : null));
       }
     }
-  }, [isDrawMode, filteredImages.length]);
+  }, [isDrawMode, displayOrderImages.length]);
 
   // Lock body scroll when lightbox is open (prevents mobile scroll-behind)
   useEffect(() => {
@@ -249,7 +282,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
       }
       if (!isDrawMode) {
         if (e.key === "ArrowRight")
-          setLightboxIndex((i) => (i !== null ? Math.min(i + 1, filteredImages.length - 1) : null));
+          setLightboxIndex((i) => (i !== null ? Math.min(i + 1, displayOrderImages.length - 1) : null));
         if (e.key === "ArrowLeft")
           setLightboxIndex((i) => (i !== null ? Math.max(i - 1, 0) : null));
       }
@@ -260,7 +293,14 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [lightboxIndex, filteredImages.length, isDrawMode, lightboxImage]);
+  }, [lightboxIndex, displayOrderImages.length, isDrawMode, lightboxImage]);
+
+  function isSocialUrl(url: string): false | string {
+    if (/instagram\.com\/(p|reel)\//i.test(url)) return "Instagram";
+    if (/xiaohongshu\.com\/(explore|discovery)/i.test(url)) return "Xiaohongshu";
+    if (/xhslink\.com\//i.test(url)) return "Xiaohongshu";
+    return false;
+  }
 
   async function handleAddUrl() {
     if (!addUrl.trim()) return;
@@ -283,7 +323,6 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
         });
         setAddUrlStatus("Added!");
         setAddUrl("");
-        // Reload from API
         const moodRes = await fetch("/api/moodboard");
         const moodData: EnrichedMoodboardImage[] = await moodRes.json();
         setImages(moodData);
@@ -293,6 +332,60 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
     } finally {
       setAddingUrl(false);
     }
+  }
+
+  async function handleAddLink() {
+    const url = linkForm.url.trim();
+    if (!url) return;
+    setAddingLink(true);
+    setAddLinkStatus("");
+    try {
+      const res = await fetch("/api/saved-links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...linkForm, url }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddLinkStatus(data.error || "Failed to save");
+      } else {
+        setLinkForm({ url: "", title: "", note: "", roomType: "", style: "" });
+        setAddLinkStatus("Saved!");
+        const linkRes = await fetch("/api/saved-links");
+        setSavedLinks(await linkRes.json());
+      }
+    } catch {
+      setAddLinkStatus("Failed to save");
+    } finally {
+      setAddingLink(false);
+    }
+  }
+
+  async function handleRemoveLink(id: string) {
+    setSavedLinks((prev) => prev.filter((l) => l.id !== id));
+    await fetch("/api/saved-links", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+  }
+
+  function handleLinkFieldChange(id: string, field: string, value: string) {
+    setSavedLinks((prev) => prev.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
+    const key = `link-${field}-${id}`;
+    const existing = debounceTimers.current.get(key);
+    if (existing) clearTimeout(existing);
+    debounceTimers.current.set(
+      key,
+      setTimeout(async () => {
+        await fetch("/api/saved-links", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, [field]: value }),
+        });
+        debounceTimers.current.delete(key);
+      }, 500)
+    );
   }
 
   function handleCommentChange(id: string, comment: string) {
@@ -414,13 +507,23 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
             <h1 className="text-xl sm:text-2xl tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
               Moodcraft
             </h1>
-            {images.length > 0 && (
-              <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-                {images.length} saved
-                {featuredImages.length > 0 && (
-                  <span> &middot; {featuredImages.length} featured</span>
-                )}
-              </span>
+            {(images.length > 0 || savedLinks.length > 0) && (
+              <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: "var(--bg-secondary)" }}>
+                <button
+                  onClick={() => setViewTab("images")}
+                  className="px-3 py-1 rounded-md text-sm font-medium cursor-pointer transition-all"
+                  style={{ background: viewTab === "images" ? "var(--bg-card)" : "transparent", color: viewTab === "images" ? "var(--text-primary)" : "var(--text-muted)", boxShadow: viewTab === "images" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+                >
+                  Images{images.length > 0 ? ` (${images.length})` : ""}
+                </button>
+                <button
+                  onClick={() => setViewTab("links")}
+                  className="px-3 py-1 rounded-md text-sm font-medium cursor-pointer transition-all"
+                  style={{ background: viewTab === "links" ? "var(--bg-card)" : "transparent", color: viewTab === "links" ? "var(--text-primary)" : "var(--text-muted)", boxShadow: viewTab === "links" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+                >
+                  Links{savedLinks.length > 0 ? ` (${savedLinks.length})` : ""}
+                </button>
+              </div>
             )}
           </div>
           {!isStatic && (
@@ -444,8 +547,8 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
         </div>
       </header>
 
-      {/* Sticky filter bar */}
-      {images.length > 0 && (
+      {/* Sticky filter bar — images tab only */}
+      {viewTab === "images" && images.length > 0 && (
         <nav
           className="sticky z-20 backdrop-blur-md"
           style={{ top: "49px", background: "rgba(250, 250, 247, 0.85)", borderBottom: "1px solid var(--border-light)" }}
@@ -543,62 +646,89 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
       )}
 
       <main className="max-w-[1800px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
-        {images.length > 0 ? (
-          filteredImages.length > 0 ? (
-            <div>
-              {/* Featured hero section */}
-              {featuredImages.length > 0 && (
-                <div className={`mb-8 ${featuredImages.length === 1 ? "" : "grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5"}`}>
-                  {featuredImages.map((img) => (
-                    <HeroCard
-                      key={img.id}
-                      img={img}
-                      onClick={() => setLightboxIndex(filteredImages.indexOf(img))}
-                      onRemove={handleRemove}
-                      onToggleFeatured={handleToggleFeatured}
-                    />
-                  ))}
-                </div>
-              )}
+        {viewTab === "images" ? (
+          /* ── Images tab ── */
+          images.length > 0 ? (
+            filteredImages.length > 0 ? (
+              <div>
+                {/* Featured hero section */}
+                {featuredImages.length > 0 && (
+                  <div className={`mb-8 ${featuredImages.length === 1 ? "" : "grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5"}`}>
+                    {featuredImages.map((img) => (
+                      <HeroCard
+                        key={img.id}
+                        img={img}
+                        onClick={() => setLightboxIndex(displayOrderImages.indexOf(img))}
+                        onRemove={handleRemove}
+                        onToggleFeatured={handleToggleFeatured}
+                      />
+                    ))}
+                  </div>
+                )}
 
-              {/* Uniform grid */}
-              {gridImages.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5">
-                  {gridImages.map((img, i) => (
-                    <GridCard
-                      key={img.id}
-                      img={img}
-                      index={i}
-                      onClick={() => setLightboxIndex(filteredImages.indexOf(img))}
-                      onRemove={handleRemove}
-                      onCommentChange={handleCommentChange}
-                      onToggleFeatured={handleToggleFeatured}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+                {/* Uniform grid */}
+                {gridImages.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5">
+                    {gridImages.map((img, i) => (
+                      <GridCard
+                        key={img.id}
+                        img={img}
+                        index={i}
+                        onClick={() => setLightboxIndex(displayOrderImages.indexOf(img))}
+                        onRemove={handleRemove}
+                        onCommentChange={handleCommentChange}
+                        onToggleFeatured={handleToggleFeatured}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <p className="text-lg" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}>No matches</p>
+                <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Try adjusting your filters</p>
+              </div>
+            )
           ) : (
-            <div className="text-center py-16">
-              <p className="text-lg" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}>No matches</p>
-              <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Try adjusting your filters</p>
-            </div>
-          )
-        ) : (
-          <div className="text-center py-20">
-            <p className="text-2xl mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}>
-              Nothing saved yet
-            </p>
-            {!isStatic && (
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                Go{" "}
-                <Link href="/browse" className="underline" style={{ color: "var(--accent-sage)" }}>
-                  browse & crawl
-                </Link>{" "}
-                to start curating your inspiration
+            <div className="text-center py-20">
+              <p className="text-2xl mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}>
+                No images yet
               </p>
+              {!isStatic && (
+                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                  Go{" "}
+                  <Link href="/browse" className="underline" style={{ color: "var(--accent-sage)" }}>
+                    browse & crawl
+                  </Link>{" "}
+                  to start curating your inspiration
+                </p>
             )}
           </div>
+          )
+        ) : (
+          /* ── Links tab ── */
+          savedLinks.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5">
+              {savedLinks.map((link, i) => (
+                <SavedLinkCard
+                  key={link.id}
+                  link={link}
+                  index={i}
+                  onRemove={handleRemoveLink}
+                  onFieldChange={handleLinkFieldChange}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20">
+              <p className="text-2xl mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}>
+                No saved links yet
+              </p>
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                Save inspiration links from Instagram, Xiaohongshu, and more
+              </p>
+            </div>
+          )
         )}
       </main>
 
@@ -633,37 +763,100 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
               className="fixed bottom-24 right-3 left-3 sm:left-auto sm:right-6 z-40 sm:w-[380px] rounded-2xl p-5 shadow-2xl"
               style={{ background: "var(--bg-card)", border: "1px solid var(--border-light)", animation: "fabPanelIn 0.2s ease-out" }}
             >
-              <h3 className="text-base mb-3" style={{ fontFamily: "var(--font-display)" }}>Add image</h3>
-              <div className="flex flex-col gap-3">
-                <input
-                  type="text"
-                  value={addUrl}
-                  onChange={(e) => { setAddUrl(e.target.value); setAddUrlStatus(""); }}
-                  placeholder="Image URL or page URL"
-                  className="w-full px-3.5 py-2.5 text-sm rounded-lg focus:outline-none"
-                  style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAddUrl(); }}
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <select value={addUrlRoom} onChange={(e) => setAddUrlRoom(e.target.value)} className="flex-1 px-3 py-2 text-sm rounded-lg focus:outline-none cursor-pointer" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: addUrlRoom === "Uncategorised" ? "var(--text-muted)" : "var(--text-primary)" }}>
-                    <option value="Uncategorised">Room type</option>
-                    {ROOM_TYPES.map((room) => (<option key={room} value={room}>{room}</option>))}
-                  </select>
-                  <select value={addUrlStyle} onChange={(e) => setAddUrlStyle(e.target.value)} className="flex-1 px-3 py-2 text-sm rounded-lg focus:outline-none cursor-pointer" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: addUrlStyle === "Uncategorised" ? "var(--text-muted)" : "var(--text-primary)" }}>
-                    <option value="Uncategorised">Style</option>
-                    {STYLES.map((style) => (<option key={style} value={style}>{style}</option>))}
-                  </select>
-                </div>
-                <button onClick={handleAddUrl} disabled={addingUrl || !addUrl.trim()} className="w-full py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer" style={{ background: "var(--accent-sage)", color: "white" }}>
-                  {addingUrl ? "Adding..." : "Add to Moodboard"}
+              {/* Tabs */}
+              <div className="flex gap-1 mb-3 p-1 rounded-lg" style={{ background: "var(--bg-secondary)" }}>
+                <button
+                  onClick={() => setAddTab("image")}
+                  className="flex-1 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-all"
+                  style={{ background: addTab === "image" ? "var(--bg-card)" : "transparent", color: addTab === "image" ? "var(--text-primary)" : "var(--text-muted)", boxShadow: addTab === "image" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+                >
+                  Image
                 </button>
-                {addUrlStatus && (
-                  <p className="text-sm text-center" style={{ color: addUrlStatus === "Added!" ? "var(--accent-sage)" : "var(--accent-red)" }}>
-                    {addUrlStatus}
-                  </p>
-                )}
+                <button
+                  onClick={() => setAddTab("link")}
+                  className="flex-1 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-all"
+                  style={{ background: addTab === "link" ? "var(--bg-card)" : "transparent", color: addTab === "link" ? "var(--text-primary)" : "var(--text-muted)", boxShadow: addTab === "link" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+                >
+                  Link
+                </button>
               </div>
+
+              {addTab === "image" ? (
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="text"
+                    value={addUrl}
+                    onChange={(e) => { setAddUrl(e.target.value); setAddUrlStatus(""); }}
+                    placeholder="Image URL or page URL"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-lg focus:outline-none"
+                    style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAddUrl(); }}
+                    autoFocus
+                  />
+                  {isSocialUrl(addUrl.trim()) && (
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      {isSocialUrl(addUrl.trim()) === "Instagram" ? "IG" : "XHS"} link detected — switch to the <button onClick={() => setAddTab("link")} className="underline cursor-pointer" style={{ color: "var(--accent-sage)" }}>Link</button> tab to save with preview.
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <select value={addUrlRoom} onChange={(e) => setAddUrlRoom(e.target.value)} className="flex-1 px-3 py-2 text-sm rounded-lg focus:outline-none cursor-pointer" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: addUrlRoom === "Uncategorised" ? "var(--text-muted)" : "var(--text-primary)" }}>
+                      <option value="Uncategorised">Room type</option>
+                      {ROOM_TYPES.map((room) => (<option key={room} value={room}>{room}</option>))}
+                    </select>
+                    <select value={addUrlStyle} onChange={(e) => setAddUrlStyle(e.target.value)} className="flex-1 px-3 py-2 text-sm rounded-lg focus:outline-none cursor-pointer" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: addUrlStyle === "Uncategorised" ? "var(--text-muted)" : "var(--text-primary)" }}>
+                      <option value="Uncategorised">Style</option>
+                      {STYLES.map((style) => (<option key={style} value={style}>{style}</option>))}
+                    </select>
+                  </div>
+                  <button onClick={handleAddUrl} disabled={addingUrl || !addUrl.trim()} className="w-full py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer" style={{ background: "var(--accent-sage)", color: "white" }}>
+                    {addingUrl ? "Adding..." : "Add to Moodboard"}
+                  </button>
+                  {addUrlStatus && (
+                    <p className="text-sm text-center" style={{ color: addUrlStatus === "Added!" ? "var(--accent-sage)" : "var(--accent-red)" }}>
+                      {addUrlStatus}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="text"
+                    value={linkForm.url}
+                    onChange={(e) => { setLinkForm({ ...linkForm, url: e.target.value }); setAddLinkStatus(""); }}
+                    placeholder="Paste Instagram, XHS, or any URL"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-lg focus:outline-none"
+                    style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAddLink(); }}
+                    autoFocus
+                  />
+                  <input
+                    type="text"
+                    value={linkForm.title}
+                    onChange={(e) => setLinkForm({ ...linkForm, title: e.target.value })}
+                    placeholder="Title (optional)"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-lg focus:outline-none"
+                    style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
+                  />
+                  <div className="flex gap-2">
+                    <select value={linkForm.roomType} onChange={(e) => setLinkForm({ ...linkForm, roomType: e.target.value })} className="flex-1 px-3 py-2 text-sm rounded-lg focus:outline-none cursor-pointer" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: linkForm.roomType ? "var(--text-primary)" : "var(--text-muted)" }}>
+                      <option value="">Room type</option>
+                      {ROOM_TYPES.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    <select value={linkForm.style} onChange={(e) => setLinkForm({ ...linkForm, style: e.target.value })} className="flex-1 px-3 py-2 text-sm rounded-lg focus:outline-none cursor-pointer" style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: linkForm.style ? "var(--text-primary)" : "var(--text-muted)" }}>
+                      <option value="">Style</option>
+                      {STYLES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <button onClick={handleAddLink} disabled={addingLink || !linkForm.url.trim()} className="w-full py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer" style={{ background: "var(--accent-sage)", color: "white" }}>
+                    {addingLink ? "Saving..." : "Save Link"}
+                  </button>
+                  {addLinkStatus && (
+                    <p className="text-sm text-center" style={{ color: addLinkStatus === "Saved!" ? "var(--accent-sage)" : "var(--accent-red)" }}>
+                      {addLinkStatus}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </>
@@ -689,7 +882,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
             </button>
           )}
-          {!isDrawMode && lightboxIndex! < filteredImages.length - 1 && (
+          {!isDrawMode && lightboxIndex! < displayOrderImages.length - 1 && (
             <button className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full hidden sm:flex items-center justify-center cursor-pointer transition-opacity hover:opacity-80" style={{ background: "rgba(255,255,255,0.15)", color: "white" }} onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i! + 1); }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
@@ -817,8 +1010,8 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
             {/* Swipe hint — mobile only, shown briefly */}
             <div className="mt-2 flex sm:hidden items-center gap-3 text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
               {lightboxIndex! > 0 && <span>&larr;</span>}
-              <span>{lightboxIndex! + 1} / {filteredImages.length}</span>
-              {lightboxIndex! < filteredImages.length - 1 && <span>&rarr;</span>}
+              <span>{lightboxIndex! + 1} / {displayOrderImages.length}</span>
+              {lightboxIndex! < displayOrderImages.length - 1 && <span>&rarr;</span>}
               {zoomScale <= 1 && <span style={{ marginLeft: 4 }}>pinch to zoom</span>}
             </div>
             {/* Info + comment */}
@@ -850,7 +1043,7 @@ export default function MoodboardGallery({ initialImages }: { initialImages: Enr
                   </span>
                 )}
                 <span className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                  {lightboxIndex! + 1} / {filteredImages.length}
+                  {lightboxIndex! + 1} / {displayOrderImages.length}
                 </span>
               </div>
               {!isStatic ? (
@@ -1123,6 +1316,143 @@ function GridCard({
           ) : img.comment ? (
             <p className="text-sm p-2 italic" style={{ color: "var(--text-secondary)" }}>
               &ldquo;{img.comment}&rdquo;
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SavedLinkCard({
+  link,
+  index,
+  onRemove,
+  onFieldChange,
+}: {
+  link: SavedLink;
+  index: number;
+  onRemove: (id: string) => void;
+  onFieldChange: (id: string, field: string, value: string) => void;
+}) {
+  const sourceColor = SOURCE_COLORS[link.source] || SOURCE_COLORS.Other;
+  const sourceIcon = SOURCE_ICONS[link.source] || SOURCE_ICONS.Other;
+  const embedUrl = getEmbedUrl(link.url, link.source);
+
+  let domain = "";
+  try { domain = new URL(link.url).hostname.replace(/^www\./, ""); } catch { domain = link.url; }
+
+  return (
+    <div className="group card-enter" style={{ animationDelay: `${index * 0.03}s` }}>
+      <div
+        className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl flex flex-col"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--border-light)" }}
+      >
+        {/* Embed or placeholder */}
+        {embedUrl ? (
+          <div className="relative w-full" style={{ aspectRatio: "4/5" }}>
+            <iframe
+              src={embedUrl}
+              className="w-full h-full border-0"
+              loading="lazy"
+              allow="encrypted-media"
+              sandbox="allow-scripts allow-same-origin allow-popups"
+            />
+            <a
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-opacity opacity-0 group-hover:opacity-100"
+              style={{ background: "rgba(0,0,0,0.5)", color: "white" }}
+              title="Open original"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                <polyline points="15 3 21 3 21 9" />
+                <line x1="10" y1="14" x2="21" y2="3" />
+              </svg>
+            </a>
+          </div>
+        ) : (
+          <a
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative flex items-center justify-center transition-opacity hover:opacity-80 cursor-pointer"
+            style={{ aspectRatio: "4/3", background: "var(--bg-secondary)" }}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-2xl font-bold" style={{ color: sourceColor }}>{sourceIcon}</span>
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>{domain}</span>
+            </div>
+            {/* Remove button */}
+            {!isStatic && (
+              <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                <button
+                  className="flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:bg-gray-100"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(link.id); }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  Remove
+                </button>
+              </div>
+            )}
+          </a>
+        )}
+
+        {/* Info */}
+        <div className="px-3 py-2.5 flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span
+              className="shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+              style={{ background: sourceColor, color: "white" }}
+            >
+              {sourceIcon}
+            </span>
+            {!isStatic ? (
+              <input
+                type="text"
+                value={link.title || ""}
+                onChange={(e) => onFieldChange(link.id, "title", e.target.value)}
+                placeholder="Add title..."
+                className="text-sm font-medium bg-transparent focus:outline-none flex-1 min-w-0 placeholder:italic"
+                style={{ color: "var(--text-primary)" }}
+              />
+            ) : link.title ? (
+              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{link.title}</span>
+            ) : null}
+          </div>
+          {(link.roomType || link.style) && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {link.roomType && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "var(--bg-secondary)", color: "var(--text-muted)" }}>
+                  {link.roomType}
+                </span>
+              )}
+              {link.style && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "var(--bg-secondary)", color: "var(--text-muted)" }}>
+                  {link.style}
+                </span>
+              )}
+            </div>
+          )}
+          {!isStatic ? (
+            <textarea
+              value={link.note || ""}
+              onChange={(e) => onFieldChange(link.id, "note", e.target.value)}
+              placeholder="Add a note..."
+              className="w-full text-sm rounded-lg p-2 resize-none focus:outline-none placeholder:italic"
+              style={{ background: "transparent", border: "none", color: "var(--text-primary)" }}
+              rows={1}
+              onInput={(e) => {
+                const t = e.target as HTMLTextAreaElement;
+                t.style.height = "auto";
+                t.style.height = t.scrollHeight + "px";
+              }}
+            />
+          ) : link.note ? (
+            <p className="text-sm p-2 italic" style={{ color: "var(--text-secondary)" }}>
+              &ldquo;{link.note}&rdquo;
             </p>
           ) : null}
         </div>
