@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import MoodboardGallery from "@/components/MoodboardGallery";
-import { SavedLink } from "@/lib/types";
+import { SavedLink, FurnitureItem } from "@/lib/types";
 
 function getEnrichedMoodboardImages() {
   const dbPath = path.join(process.cwd(), "data", "db.json");
@@ -35,8 +35,18 @@ function getSavedLinks(): SavedLink[] {
   );
 }
 
+function getFurnitureItems(): FurnitureItem[] {
+  const dbPath = path.join(process.cwd(), "data", "db.json");
+  const raw = fs.readFileSync(dbPath, "utf-8");
+  const db = JSON.parse(raw);
+  return (db.furnitureItems || []).sort(
+    (a: FurnitureItem, b: FurnitureItem) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
+  );
+}
+
 export default function Home() {
   const images = getEnrichedMoodboardImages();
   const savedLinks = getSavedLinks();
-  return <MoodboardGallery initialImages={images} initialLinks={savedLinks} />;
+  const furnitureItems = getFurnitureItems();
+  return <MoodboardGallery initialImages={images} initialLinks={savedLinks} initialFurniture={furnitureItems} />;
 }

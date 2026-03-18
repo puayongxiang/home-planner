@@ -59,7 +59,7 @@ export interface MoodboardImage {
   imageUrl: string;
   comment: string;
   addedAt: string;
-  featured?: boolean;
+  pinned?: boolean;
   annotations?: Stroke[];
 }
 
@@ -71,6 +71,7 @@ export interface FurnitureItem {
   link?: string;
   roomType?: string;
   notes?: string;
+  pinned?: boolean;
   addedAt: string;
 }
 
@@ -82,5 +83,6 @@ export interface SavedLink {
   note?: string;
   roomType?: string;
   style?: string;
+  pinned?: boolean;
   savedAt: string;
 }

@@ -56,7 +56,7 @@ export async function PUT(req: NextRequest) {
   }
 
   if ("comment" in body) image.comment = body.comment;
-  if ("featured" in body) image.featured = body.featured;
+  if ("pinned" in body) image.pinned = body.pinned;
   if ("annotations" in body) image.annotations = body.annotations;
   writeDB(db);
 

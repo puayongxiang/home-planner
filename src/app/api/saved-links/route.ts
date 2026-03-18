@@ -64,6 +64,7 @@ export async function PUT(req: NextRequest) {
   if ("note" in updates) link.note = updates.note;
   if ("roomType" in updates) link.roomType = updates.roomType;
   if ("style" in updates) link.style = updates.style;
+  if ("pinned" in updates) link.pinned = updates.pinned;
 
   writeDB(db);
   return NextResponse.json(link);

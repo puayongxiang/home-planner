@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { MoodboardImage, SavedLink, Stroke, DrawTool, ROOM_TYPES, STYLES } from "@/lib/types";
+import { MoodboardImage, SavedLink, FurnitureItem, Stroke, DrawTool, ROOM_TYPES, STYLES } from "@/lib/types";
 import AnnotationCanvas from "@/components/AnnotationCanvas";
 
 interface EnrichedMoodboardImage extends MoodboardImage {
@@ -60,9 +60,10 @@ function getEmbedUrl(url: string, source: string): string | null {
   return null;
 }
 
-export default function MoodboardGallery({ initialImages, initialLinks = [] }: { initialImages: EnrichedMoodboardImage[]; initialLinks?: SavedLink[] }) {
+export default function MoodboardGallery({ initialImages, initialLinks = [], initialFurniture = [] }: { initialImages: EnrichedMoodboardImage[]; initialLinks?: SavedLink[]; initialFurniture?: FurnitureItem[] }) {
   const [images, setImages] = useState<EnrichedMoodboardImage[]>(initialImages);
   const [savedLinks, setSavedLinks] = useState<SavedLink[]>(initialLinks);
+  const [furnitureItems, setFurnitureItems] = useState<FurnitureItem[]>(initialFurniture);
   const [filterRoom, setFilterRoom] = useState<string>("All");
   const [filterStyle, setFilterStyle] = useState<string>("All");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -76,9 +77,12 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
   const [drawTool, setDrawTool] = useState<DrawTool>("pen");
   const [drawColor, setDrawColor] = useState("#FF4444");
   const [drawWidth, setDrawWidth] = useState(4);
-  const [viewTab, setViewTab] = useState<"images" | "links">("images");
-  const [addTab, setAddTab] = useState<"image" | "link">("image");
+  const [viewTab, setViewTab] = useState<"pinned" | "shortlisted">("pinned");
+  const [addTab, setAddTab] = useState<"image" | "link" | "furniture">("image");
   const [linkForm, setLinkForm] = useState({ url: "", title: "", note: "", roomType: "", style: "" });
+  const [furnitureForm, setFurnitureForm] = useState({ name: "", imageUrl: "", price: "", link: "", roomType: "", notes: "" });
+  const [addingFurniture, setAddingFurniture] = useState(false);
+  const [addFurnitureStatus, setAddFurnitureStatus] = useState("");
   const [addingLink, setAddingLink] = useState(false);
   const [addLinkStatus, setAddLinkStatus] = useState("");
   const lightboxImageContainerRef = useRef<HTMLDivElement>(null);
@@ -87,14 +91,17 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
   const rooms = useMemo(() => {
     const set = new Set<string>();
     images.forEach((img) => set.add(img.roomType || "Uncategorised"));
+    savedLinks.forEach((l) => { if (l.roomType) set.add(l.roomType); });
+    furnitureItems.forEach((f) => { if (f.roomType) set.add(f.roomType); });
     return Array.from(set);
-  }, [images]);
+  }, [images, savedLinks, furnitureItems]);
 
   const styles = useMemo(() => {
     const set = new Set<string>();
     images.forEach((img) => set.add(img.style || "Uncategorised"));
+    savedLinks.forEach((l) => { if (l.style) set.add(l.style); });
     return Array.from(set);
-  }, [images]);
+  }, [images, savedLinks]);
 
   const filteredImages = useMemo(() => {
     return images
@@ -102,11 +109,48 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
       .filter((img) => filterStyle === "All" || img.style === filterStyle);
   }, [images, filterRoom, filterStyle]);
 
-  const featuredImages = useMemo(() => filteredImages.filter((img) => img.featured), [filteredImages]);
-  const gridImages = useMemo(() => filteredImages.filter((img) => !img.featured), [filteredImages]);
+  const filteredLinks = useMemo(() => {
+    return savedLinks
+      .filter((l) => filterRoom === "All" || l.roomType === filterRoom || (!l.roomType && filterRoom === "All"))
+      .filter((l) => filterStyle === "All" || l.style === filterStyle || (!l.style && filterStyle === "All"));
+  }, [savedLinks, filterRoom, filterStyle]);
 
-  // Display-ordered list: featured first, then grid — matches visual layout for lightbox navigation
-  const displayOrderImages = useMemo(() => [...featuredImages, ...gridImages], [featuredImages, gridImages]);
+  const filteredFurniture = useMemo(() => {
+    return furnitureItems
+      .filter((f) => filterRoom === "All" || f.roomType === filterRoom || (!f.roomType && filterRoom === "All"));
+  }, [furnitureItems, filterRoom]);
+
+  // Unified display list
+  type UnifiedItem = { type: "image"; data: EnrichedMoodboardImage; date: string } | { type: "link"; data: SavedLink; date: string } | { type: "furniture"; data: FurnitureItem; date: string };
+  const unifiedItems = useMemo(() => {
+    const imageItems: UnifiedItem[] = filteredImages.map((img) => ({ type: "image", data: img, date: img.addedAt }));
+    const linkItems: UnifiedItem[] = filteredLinks.map((l) => ({ type: "link", data: l, date: l.savedAt }));
+    const furnitureItemsList: UnifiedItem[] = filteredFurniture.map((f) => ({ type: "furniture", data: f, date: f.addedAt }));
+    let items: UnifiedItem[];
+    if (viewTab === "pinned") {
+      items = [
+        ...imageItems.filter((item) => (item.data as EnrichedMoodboardImage).pinned),
+        ...linkItems.filter((item) => (item.data as SavedLink).pinned),
+        ...furnitureItemsList.filter((item) => (item.data as FurnitureItem).pinned),
+      ];
+    } else {
+      // Shortlisted: exclude pinned items
+      items = [
+        ...imageItems.filter((item) => !(item.data as EnrichedMoodboardImage).pinned),
+        ...linkItems.filter((item) => !(item.data as SavedLink).pinned),
+        ...furnitureItemsList.filter((item) => !(item.data as FurnitureItem).pinned),
+      ];
+    }
+    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return items;
+  }, [filteredImages, filteredLinks, filteredFurniture, viewTab]);
+
+  // Image-only display order for lightbox navigation
+  const displayOrderImages = useMemo(() => {
+    const pinned = filteredImages.filter((img) => img.pinned);
+    const unpinned = filteredImages.filter((img) => !img.pinned);
+    return [...pinned, ...unpinned];
+  }, [filteredImages]);
 
   const lightboxImage = lightboxIndex !== null ? displayOrderImages[lightboxIndex] : null;
 
@@ -361,6 +405,43 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
     }
   }
 
+  async function handleAddFurniture() {
+    if (!furnitureForm.name.trim()) return;
+    setAddingFurniture(true);
+    setAddFurnitureStatus("");
+    try {
+      const res = await fetch("/api/furniture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...furnitureForm, roomType: furnitureForm.roomType || undefined }),
+      });
+      if (res.ok) {
+        setFurnitureForm({ name: "", imageUrl: "", price: "", link: "", roomType: "", notes: "" });
+        setAddFurnitureStatus("Added!");
+        const furnitureRes = await fetch("/api/furniture");
+        setFurnitureItems(await furnitureRes.json());
+      } else {
+        setAddFurnitureStatus("Failed to add");
+      }
+    } catch {
+      setAddFurnitureStatus("Failed to add");
+    } finally {
+      setAddingFurniture(false);
+    }
+  }
+
+  async function handleToggleLinkPin(id: string) {
+    const link = savedLinks.find((l) => l.id === id);
+    if (!link) return;
+    const newPinned = !link.pinned;
+    setSavedLinks((prev) => prev.map((l) => (l.id === id ? { ...l, pinned: newPinned } : l)));
+    await fetch("/api/saved-links", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, pinned: newPinned }),
+    });
+  }
+
   async function handleRemoveLink(id: string) {
     setSavedLinks((prev) => prev.filter((l) => l.id !== id));
     await fetch("/api/saved-links", {
@@ -379,6 +460,45 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
       key,
       setTimeout(async () => {
         await fetch("/api/saved-links", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, [field]: value }),
+        });
+        debounceTimers.current.delete(key);
+      }, 500)
+    );
+  }
+
+  async function handleToggleFurniturePin(id: string) {
+    const item = furnitureItems.find((f) => f.id === id);
+    if (!item) return;
+    const newPinned = !item.pinned;
+    setFurnitureItems((prev) => prev.map((f) => (f.id === id ? { ...f, pinned: newPinned } : f)));
+    await fetch("/api/furniture", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, pinned: newPinned }),
+    });
+  }
+
+  async function handleRemoveFurniture(id: string) {
+    setFurnitureItems((prev) => prev.filter((f) => f.id !== id));
+    await fetch("/api/furniture", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+  }
+
+  function handleFurnitureFieldChange(id: string, field: string, value: string) {
+    setFurnitureItems((prev) => prev.map((f) => (f.id === id ? { ...f, [field]: value } : f)));
+    const key = `furniture-${field}-${id}`;
+    const existing = debounceTimers.current.get(key);
+    if (existing) clearTimeout(existing);
+    debounceTimers.current.set(
+      key,
+      setTimeout(async () => {
+        await fetch("/api/furniture", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id, [field]: value }),
@@ -483,17 +603,19 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
     }
   }
 
-  async function handleToggleFeatured(id: string) {
+  async function handleTogglePin(id: string) {
     const img = images.find((i) => i.id === id);
     if (!img) return;
-    const newFeatured = !img.featured;
-    setImages((prev) => prev.map((i) => (i.id === id ? { ...i, featured: newFeatured } : i)));
+    const newPinned = !img.pinned;
+    setImages((prev) => prev.map((i) => (i.id === id ? { ...i, pinned: newPinned } : i)));
     await fetch("/api/moodboard", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, featured: newFeatured }),
+      body: JSON.stringify({ id, pinned: newPinned }),
     });
   }
+
+  const pinnedCount = images.filter((i) => i.pinned).length + savedLinks.filter((l) => l.pinned).length + furnitureItems.filter((f) => f.pinned).length;
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
@@ -507,34 +629,9 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
             <h1 className="text-xl sm:text-2xl tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
               Moodcraft
             </h1>
-            {(images.length > 0 || savedLinks.length > 0) && (
-              <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: "var(--bg-secondary)" }}>
-                <button
-                  onClick={() => setViewTab("images")}
-                  className="px-3 py-1 rounded-md text-sm font-medium cursor-pointer transition-all"
-                  style={{ background: viewTab === "images" ? "var(--bg-card)" : "transparent", color: viewTab === "images" ? "var(--text-primary)" : "var(--text-muted)", boxShadow: viewTab === "images" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
-                >
-                  Images{images.length > 0 ? ` (${images.length})` : ""}
-                </button>
-                <button
-                  onClick={() => setViewTab("links")}
-                  className="px-3 py-1 rounded-md text-sm font-medium cursor-pointer transition-all"
-                  style={{ background: viewTab === "links" ? "var(--bg-card)" : "transparent", color: viewTab === "links" ? "var(--text-primary)" : "var(--text-muted)", boxShadow: viewTab === "links" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
-                >
-                  Links{savedLinks.length > 0 ? ` (${savedLinks.length})` : ""}
-                </button>
-              </div>
-            )}
           </div>
           {!isStatic && (
             <div className="flex items-center gap-2">
-              <Link
-                href="/furniture"
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
-                style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "1px solid var(--border-light)" }}
-              >
-                Furniture
-              </Link>
               <Link
                 href="/browse"
                 className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
@@ -547,11 +644,41 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
         </div>
       </header>
 
-      {/* Sticky filter bar — images tab only */}
-      {viewTab === "images" && images.length > 0 && (
+      {/* View tabs */}
+      {(images.length > 0 || savedLinks.length > 0 || furnitureItems.length > 0) && (
+        <div
+          className="sticky z-[25] backdrop-blur-md"
+          style={{ top: "49px", background: "rgba(250, 250, 247, 0.9)", borderBottom: "1px solid var(--border-light)" }}
+        >
+          <div className="max-w-[1800px] mx-auto px-3 sm:px-6 py-2 flex justify-center">
+            <div className="flex gap-1 p-1 rounded-lg" style={{ background: "var(--bg-secondary)" }}>
+              {([
+                { key: "pinned" as const, label: "Pinned", count: pinnedCount },
+                { key: "shortlisted" as const, label: "Shortlisted", count: images.length + savedLinks.length + furnitureItems.length - pinnedCount },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setViewTab(tab.key)}
+                  className="px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-all"
+                  style={{
+                    background: viewTab === tab.key ? "var(--bg-card)" : "transparent",
+                    color: viewTab === tab.key ? "var(--text-primary)" : "var(--text-muted)",
+                    boxShadow: viewTab === tab.key ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                  }}
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky filter bar */}
+      {(images.length > 0 || savedLinks.length > 0 || furnitureItems.length > 0) && rooms.length > 0 && (
         <nav
           className="sticky z-20 backdrop-blur-md"
-          style={{ top: "49px", background: "rgba(250, 250, 247, 0.85)", borderBottom: "1px solid var(--border-light)" }}
+          style={{ top: "90px", background: "rgba(250, 250, 247, 0.85)", borderBottom: "1px solid var(--border-light)" }}
         >
           {/* Desktop: single row */}
           <div
@@ -646,89 +773,64 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
       )}
 
       <main className="max-w-[1800px] mx-auto px-3 sm:px-6 py-4 sm:py-8">
-        {viewTab === "images" ? (
-          /* ── Images tab ── */
-          images.length > 0 ? (
-            filteredImages.length > 0 ? (
-              <div>
-                {/* Featured hero section */}
-                {featuredImages.length > 0 && (
-                  <div className={`mb-8 ${featuredImages.length === 1 ? "" : "grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5"}`}>
-                    {featuredImages.map((img) => (
-                      <HeroCard
-                        key={img.id}
-                        img={img}
-                        onClick={() => setLightboxIndex(displayOrderImages.indexOf(img))}
-                        onRemove={handleRemove}
-                        onToggleFeatured={handleToggleFeatured}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Uniform grid */}
-                {gridImages.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5">
-                    {gridImages.map((img, i) => (
-                      <GridCard
-                        key={img.id}
-                        img={img}
-                        index={i}
-                        onClick={() => setLightboxIndex(displayOrderImages.indexOf(img))}
-                        onRemove={handleRemove}
-                        onCommentChange={handleCommentChange}
-                        onToggleFeatured={handleToggleFeatured}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-16">
-                <p className="text-lg" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}>No matches</p>
-                <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Try adjusting your filters</p>
-              </div>
-            )
-          ) : (
-            <div className="text-center py-20">
-              <p className="text-2xl mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}>
-                No images yet
-              </p>
-              {!isStatic && (
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                  Go{" "}
-                  <Link href="/browse" className="underline" style={{ color: "var(--accent-sage)" }}>
-                    browse & crawl
-                  </Link>{" "}
-                  to start curating your inspiration
-                </p>
-            )}
-          </div>
-          )
-        ) : (
-          /* ── Links tab ── */
-          savedLinks.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5">
-              {savedLinks.map((link, i) => (
+        {unifiedItems.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-5">
+            {unifiedItems.map((item, i) =>
+              item.type === "image" ? (
+                <GridCard
+                  key={item.data.id}
+                  img={item.data as EnrichedMoodboardImage}
+                  index={i}
+                  onClick={() => setLightboxIndex(displayOrderImages.indexOf(item.data as EnrichedMoodboardImage))}
+                  onRemove={handleRemove}
+                  onCommentChange={handleCommentChange}
+                  onTogglePin={handleTogglePin}
+                />
+              ) : item.type === "link" ? (
                 <SavedLinkCard
-                  key={link.id}
-                  link={link}
+                  key={item.data.id}
+                  link={item.data as SavedLink}
                   index={i}
                   onRemove={handleRemoveLink}
                   onFieldChange={handleLinkFieldChange}
+                  onTogglePin={handleToggleLinkPin}
                 />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-20">
-              <p className="text-2xl mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}>
-                No saved links yet
-              </p>
+              ) : (
+                <FurnitureCard
+                  key={item.data.id}
+                  item={item.data as FurnitureItem}
+                  index={i}
+                  onRemove={handleRemoveFurniture}
+                  onFieldChange={handleFurnitureFieldChange}
+                  onTogglePin={handleToggleFurniturePin}
+                />
+              )
+            )}
+          </div>
+        ) : images.length > 0 || savedLinks.length > 0 || furnitureItems.length > 0 ? (
+          <div className="text-center py-16">
+            <p className="text-lg" style={{ color: "var(--text-secondary)", fontFamily: "var(--font-display)" }}>
+              {viewTab === "pinned" ? "No pinned items" : "No matches"}
+            </p>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
+              {viewTab === "pinned" ? "Pin images to see them here" : "Try adjusting your filters"}
+            </p>
+          </div>
+        ) : (
+          <div className="text-center py-20">
+            <p className="text-2xl mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}>
+              No items yet
+            </p>
+            {!isStatic && (
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                Save inspiration links from Instagram, Xiaohongshu, and more
+                Go{" "}
+                <Link href="/browse" className="underline" style={{ color: "var(--accent-sage)" }}>
+                  browse & crawl
+                </Link>{" "}
+                to start curating your inspiration
               </p>
-            </div>
-          )
+            )}
+          </div>
         )}
       </main>
 
@@ -779,6 +881,13 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
                 >
                   Link
                 </button>
+                <button
+                  onClick={() => setAddTab("furniture")}
+                  className="flex-1 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-all"
+                  style={{ background: addTab === "furniture" ? "var(--bg-card)" : "transparent", color: addTab === "furniture" ? "var(--text-primary)" : "var(--text-muted)", boxShadow: addTab === "furniture" ? "0 1px 3px rgba(0,0,0,0.08)" : "none" }}
+                >
+                  Furniture
+                </button>
               </div>
 
               {addTab === "image" ? (
@@ -817,7 +926,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
                     </p>
                   )}
                 </div>
-              ) : (
+              ) : addTab === "link" ? (
                 <div className="flex flex-col gap-3">
                   <input
                     type="text"
@@ -856,7 +965,63 @@ export default function MoodboardGallery({ initialImages, initialLinks = [] }: {
                     </p>
                   )}
                 </div>
-              )}
+              ) : addTab === "furniture" ? (
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="text"
+                    value={furnitureForm.name}
+                    onChange={(e) => { setFurnitureForm({ ...furnitureForm, name: e.target.value }); setAddFurnitureStatus(""); }}
+                    placeholder="Name *"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-lg focus:outline-none"
+                    style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
+                    autoFocus
+                    onKeyDown={(e) => { if (e.key === "Enter") handleAddFurniture(); }}
+                  />
+                  <input
+                    type="text"
+                    value={furnitureForm.imageUrl}
+                    onChange={(e) => setFurnitureForm({ ...furnitureForm, imageUrl: e.target.value })}
+                    placeholder="Image URL"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-lg focus:outline-none"
+                    style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={furnitureForm.price}
+                      onChange={(e) => setFurnitureForm({ ...furnitureForm, price: e.target.value })}
+                      placeholder="Price"
+                      className="flex-1 px-3.5 py-2.5 text-sm rounded-lg focus:outline-none"
+                      style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
+                    />
+                    <select
+                      value={furnitureForm.roomType}
+                      onChange={(e) => setFurnitureForm({ ...furnitureForm, roomType: e.target.value })}
+                      className="flex-1 px-3 py-2.5 text-sm rounded-lg focus:outline-none cursor-pointer"
+                      style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: furnitureForm.roomType ? "var(--text-primary)" : "var(--text-muted)" }}
+                    >
+                      <option value="">Room (optional)</option>
+                      {ROOM_TYPES.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <input
+                    type="text"
+                    value={furnitureForm.link}
+                    onChange={(e) => setFurnitureForm({ ...furnitureForm, link: e.target.value })}
+                    placeholder="Product link"
+                    className="w-full px-3.5 py-2.5 text-sm rounded-lg focus:outline-none"
+                    style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", color: "var(--text-primary)" }}
+                  />
+                  <button onClick={handleAddFurniture} disabled={addingFurniture || !furnitureForm.name.trim()} className="w-full py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer" style={{ background: "var(--accent-sage)", color: "white" }}>
+                    {addingFurniture ? "Adding..." : "Add Furniture"}
+                  </button>
+                  {addFurnitureStatus && (
+                    <p className="text-sm text-center" style={{ color: addFurnitureStatus === "Added!" ? "var(--accent-sage)" : "var(--accent-red)" }}>
+                      {addFurnitureStatus}
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
           )}
         </>
@@ -1150,78 +1315,6 @@ function StrokesOverlay({ annotations }: { annotations?: Stroke[] }) {
   );
 }
 
-/* ── Hero Card (featured) ── */
-function HeroCard({
-  img,
-  onClick,
-  onRemove,
-  onToggleFeatured,
-}: {
-  img: { id: string; imageUrl: string; roomType: string; style: string; comment: string; featured?: boolean; annotations?: Stroke[] };
-  onClick: () => void;
-  onRemove: (id: string) => void;
-  onToggleFeatured: (id: string) => void;
-}) {
-  const roomColor = ROOM_COLORS[img.roomType] || "var(--accent-sage)";
-  const styleColor = STYLE_COLORS[img.style] || null;
-  return (
-    <div className="group card-enter">
-      <div
-        className="rounded-2xl overflow-hidden relative cursor-pointer transition-all duration-300 hover:shadow-2xl"
-        style={{ border: "1px solid var(--border-light)" }}
-        onClick={onClick}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={img.imageUrl}
-          alt="Featured"
-          className="w-full object-cover card-image"
-          style={{ aspectRatio: "16/9" }}
-          referrerPolicy="no-referrer"
-        />
-        <StrokesOverlay annotations={img.annotations} />
-        <div className="absolute inset-x-0 bottom-0 p-5 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)" }}>
-          <div className="flex items-center gap-2.5">
-            <span className="text-xs font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full" style={{ background: roomColor, color: "white" }}>
-              {img.roomType}
-            </span>
-            {img.style && img.style !== "Uncategorised" && (
-              <span className="text-xs font-medium px-2.5 py-1.5 rounded-full" style={{ background: styleColor ? `${styleColor}dd` : "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.95)" }}>
-                {img.style}
-              </span>
-            )}
-            {img.comment && (
-              <span className="ml-auto text-sm max-w-[300px] truncate" style={{ color: "rgba(255,255,255,0.8)" }}>
-                &ldquo;{img.comment}&rdquo;
-              </span>
-            )}
-          </div>
-        </div>
-        {/* Action buttons — dev only */}
-        {!isStatic && (
-          <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-            <button
-              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium cursor-pointer transition-colors hover:brightness-110"
-              style={{ background: "rgba(212, 170, 60, 0.9)", color: "white" }}
-              onClick={(e) => { e.stopPropagation(); onToggleFeatured(img.id); }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-              Unfeature
-            </button>
-            <button
-              className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded-full text-sm font-medium cursor-pointer transition-colors hover:bg-gray-100"
-              onClick={(e) => { e.stopPropagation(); onRemove(img.id); }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              Remove
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ── Grid Card ── */
 function GridCard({
   img,
@@ -1229,14 +1322,14 @@ function GridCard({
   onClick,
   onRemove,
   onCommentChange,
-  onToggleFeatured,
+  onTogglePin,
 }: {
-  img: { id: string; imageUrl: string; roomType: string; style: string; comment: string; featured?: boolean; annotations?: Stroke[] };
+  img: { id: string; imageUrl: string; roomType: string; style: string; comment: string; pinned?: boolean; annotations?: Stroke[] };
   index: number;
   onClick: () => void;
   onRemove: (id: string) => void;
   onCommentChange: (id: string, comment: string) => void;
-  onToggleFeatured: (id: string) => void;
+  onTogglePin: (id: string) => void;
 }) {
   const roomColor = ROOM_COLORS[img.roomType] || "var(--accent-sage)";
   const styleColor = STYLE_COLORS[img.style] || null;
@@ -1255,6 +1348,20 @@ function GridCard({
             referrerPolicy="no-referrer"
           />
           <StrokesOverlay annotations={img.annotations} />
+          {/* Pin ribbon indicator */}
+          {img.pinned && (
+            <span
+              className="absolute top-0 right-4 z-10 pointer-events-none flex items-center justify-center"
+              style={{ width: 28, height: 36 }}
+            >
+              <svg width="28" height="36" viewBox="0 0 28 36" fill="none">
+                <path d="M0 0h28v32l-14-6-14 6V0z" fill="var(--accent-terracotta, #C4775B)" />
+              </svg>
+              <svg className="absolute" style={{ top: 7 }} width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="1">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </span>
+          )}
           <span
             className="absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full pointer-events-none z-10"
             style={{ background: `${roomColor}cc`, color: "white", backdropFilter: "blur(4px)" }}
@@ -1281,11 +1388,11 @@ function GridCard({
             <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
               <button
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
-                style={{ background: "rgba(212, 170, 60, 0.9)", color: "white" }}
-                onClick={(e) => { e.stopPropagation(); onToggleFeatured(img.id); }}
+                style={{ background: img.pinned ? "rgba(196, 119, 91, 0.9)" : "rgba(212, 170, 60, 0.9)", color: "white" }}
+                onClick={(e) => { e.stopPropagation(); onTogglePin(img.id); }}
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-                Feature
+                <svg width="11" height="11" viewBox="0 0 24 24" fill={img.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                {img.pinned ? "Unpin" : "Pin"}
               </button>
               <button
                 className="flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:bg-gray-100"
@@ -1329,11 +1436,13 @@ function SavedLinkCard({
   index,
   onRemove,
   onFieldChange,
+  onTogglePin,
 }: {
   link: SavedLink;
   index: number;
   onRemove: (id: string) => void;
   onFieldChange: (id: string, field: string, value: string) => void;
+  onTogglePin: (id: string) => void;
 }) {
   const sourceColor = SOURCE_COLORS[link.source] || SOURCE_COLORS.Other;
   const sourceIcon = SOURCE_ICONS[link.source] || SOURCE_ICONS.Other;
@@ -1345,9 +1454,23 @@ function SavedLinkCard({
   return (
     <div className="group card-enter" style={{ animationDelay: `${index * 0.03}s` }}>
       <div
-        className="rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl flex flex-col"
+        className="relative rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl flex flex-col"
         style={{ background: "var(--bg-card)", border: "1px solid var(--border-light)" }}
       >
+        {/* Pin ribbon indicator */}
+        {link.pinned && (
+          <span
+            className="absolute top-0 right-4 z-10 pointer-events-none flex items-center justify-center"
+            style={{ width: 28, height: 36 }}
+          >
+            <svg width="28" height="36" viewBox="0 0 28 36" fill="none">
+              <path d="M0 0h28v32l-14-6-14 6V0z" fill="var(--accent-terracotta, #C4775B)" />
+            </svg>
+            <svg className="absolute" style={{ top: 7 }} width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="1">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </span>
+        )}
         {/* Embed or placeholder */}
         {embedUrl ? (
           <div className="relative w-full" style={{ aspectRatio: "4/5" }}>
@@ -1358,20 +1481,41 @@ function SavedLinkCard({
               allow="encrypted-media"
               sandbox="allow-scripts allow-same-origin allow-popups"
             />
-            <a
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-opacity opacity-0 group-hover:opacity-100"
-              style={{ background: "rgba(0,0,0,0.5)", color: "white" }}
-              title="Open original"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                <polyline points="15 3 21 3 21 9" />
-                <line x1="10" y1="14" x2="21" y2="3" />
-              </svg>
-            </a>
+            <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+              {!isStatic && (
+                <>
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
+                    style={{ background: link.pinned ? "rgba(196, 119, 91, 0.9)" : "rgba(212, 170, 60, 0.9)", color: "white" }}
+                    onClick={() => onTogglePin(link.id)}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill={link.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                    {link.pinned ? "Unpin" : "Pin"}
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:bg-gray-100"
+                    onClick={() => onRemove(link.id)}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    Remove
+                  </button>
+                </>
+              )}
+              <a
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.5)", color: "white" }}
+                title="Open original"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </a>
+            </div>
           </div>
         ) : (
           <a
@@ -1385,9 +1529,17 @@ function SavedLinkCard({
               <span className="text-2xl font-bold" style={{ color: sourceColor }}>{sourceIcon}</span>
               <span className="text-xs" style={{ color: "var(--text-muted)" }}>{domain}</span>
             </div>
-            {/* Remove button */}
+            {/* Action buttons */}
             {!isStatic && (
               <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
+                  style={{ background: link.pinned ? "rgba(196, 119, 91, 0.9)" : "rgba(212, 170, 60, 0.9)", color: "white" }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePin(link.id); }}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill={link.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                  {link.pinned ? "Unpin" : "Pin"}
+                </button>
                 <button
                   className="flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:bg-gray-100"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(link.id); }}
@@ -1453,6 +1605,178 @@ function SavedLinkCard({
           ) : link.note ? (
             <p className="text-sm p-2 italic" style={{ color: "var(--text-secondary)" }}>
               &ldquo;{link.note}&rdquo;
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FurnitureCard({
+  item,
+  index,
+  onRemove,
+  onFieldChange,
+  onTogglePin,
+}: {
+  item: FurnitureItem;
+  index: number;
+  onRemove: (id: string) => void;
+  onFieldChange: (id: string, field: string, value: string) => void;
+  onTogglePin: (id: string) => void;
+}) {
+  const roomColor = ROOM_COLORS[item.roomType || ""] || "var(--accent-sage)";
+  return (
+    <div className="group card-enter" style={{ animationDelay: `${index * 0.03}s` }}>
+      <div
+        className="relative rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--border-light)" }}
+      >
+        {/* Pin ribbon */}
+        {item.pinned && (
+          <span
+            className="absolute top-0 right-4 z-10 pointer-events-none flex items-center justify-center"
+            style={{ width: 28, height: 36 }}
+          >
+            <svg width="28" height="36" viewBox="0 0 28 36" fill="none">
+              <path d="M0 0h28v32l-14-6-14 6V0z" fill="var(--accent-terracotta, #C4775B)" />
+            </svg>
+            <svg className="absolute" style={{ top: 7 }} width="12" height="12" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="1">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </span>
+        )}
+        {/* Image */}
+        {item.imageUrl ? (
+          <div className="relative overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.imageUrl}
+              alt={item.name}
+              className="w-full object-cover card-image grid-card-img"
+              style={{ aspectRatio: "4/3" }}
+              referrerPolicy="no-referrer"
+            />
+            {item.roomType && (
+              <span
+                className="absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full pointer-events-none z-10"
+                style={{ background: `${roomColor}cc`, color: "white", backdropFilter: "blur(4px)" }}
+              >
+                {item.roomType}
+              </span>
+            )}
+            <span
+              className="absolute bottom-3 left-3 text-[11px] font-medium px-2.5 py-1 rounded-full pointer-events-none z-10"
+              style={{ background: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.95)", backdropFilter: "blur(4px)" }}
+            >
+              Furniture
+            </span>
+            {!isStatic && (
+              <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
+                  style={{ background: item.pinned ? "rgba(196, 119, 91, 0.9)" : "rgba(212, 170, 60, 0.9)", color: "white" }}
+                  onClick={() => onTogglePin(item.id)}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill={item.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                  {item.pinned ? "Unpin" : "Pin"}
+                </button>
+                <button
+                  className="flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:bg-gray-100"
+                  onClick={() => onRemove(item.id)}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="relative flex items-center justify-center" style={{ aspectRatio: "4/3", background: "var(--bg-secondary)" }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-muted)", opacity: 0.4 }}>
+              <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+            </svg>
+            {item.roomType && (
+              <span className="absolute top-3 left-3 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-full" style={{ background: "var(--border-light)", color: "var(--text-muted)" }}>
+                {item.roomType}
+              </span>
+            )}
+            <span
+              className="absolute bottom-3 left-3 text-[11px] font-medium px-2.5 py-1 rounded-full pointer-events-none z-10"
+              style={{ background: "var(--border-light)", color: "var(--text-muted)" }}
+            >
+              Furniture
+            </span>
+            {!isStatic && (
+              <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                <button
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
+                  style={{ background: item.pinned ? "rgba(196, 119, 91, 0.9)" : "rgba(212, 170, 60, 0.9)", color: "white" }}
+                  onClick={() => onTogglePin(item.id)}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill={item.pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+                  {item.pinned ? "Unpin" : "Pin"}
+                </button>
+                <button
+                  className="flex items-center gap-1.5 bg-white text-black px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:bg-gray-100"
+                  onClick={() => onRemove(item.id)}
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        {/* Info */}
+        <div className="px-3.5 py-3 flex flex-col gap-1.5">
+          <div className="flex items-start justify-between gap-2">
+            {!isStatic ? (
+              <input
+                type="text"
+                value={item.name}
+                onChange={(e) => onFieldChange(item.id, "name", e.target.value)}
+                className="text-sm font-medium bg-transparent focus:outline-none flex-1 min-w-0"
+                style={{ color: "var(--text-primary)" }}
+              />
+            ) : (
+              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{item.name}</span>
+            )}
+            {item.price && (
+              <span className="text-sm font-medium shrink-0" style={{ color: "var(--accent-sage)" }}>
+                {item.price}
+              </span>
+            )}
+          </div>
+          {item.link && (
+            <a
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs truncate hover:underline"
+              style={{ color: "var(--text-muted)" }}
+            >
+              {item.link.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]}
+            </a>
+          )}
+          {!isStatic ? (
+            <textarea
+              value={item.notes || ""}
+              onChange={(e) => onFieldChange(item.id, "notes", e.target.value)}
+              placeholder="Add notes..."
+              className="w-full text-sm rounded-lg p-2 resize-none focus:outline-none placeholder:italic"
+              style={{ background: "transparent", border: "none", color: "var(--text-primary)" }}
+              rows={1}
+              onInput={(e) => {
+                const t = e.target as HTMLTextAreaElement;
+                t.style.height = "auto";
+                t.style.height = t.scrollHeight + "px";
+              }}
+            />
+          ) : item.notes ? (
+            <p className="text-sm p-2 italic" style={{ color: "var(--text-secondary)" }}>
+              &ldquo;{item.notes}&rdquo;
             </p>
           ) : null}
         </div>

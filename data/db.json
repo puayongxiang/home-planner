@@ -53774,7 +53774,7 @@
       "sourceUrl": "https://stackedhomes.com/inside-an-architects-small-cosy-505-sqft-apartment/",
       "imageUrl": "https://stacked-editorial.sgp1.digitaloceanspaces.com/editorial/wp-content/uploads/2023/03/26154012/2-room-flexi-renovation-1.jpg",
       "alt": "2 room flexi renovation 1",
-      "roomType": "Uncategorised",
+      "roomType": "Study",
       "style": "Uncategorised",
       "source": "StackedHomes",
       "crawledAt": "2026-03-12T07:44:40.539Z"
@@ -56974,7 +56974,7 @@
       "sourceUrl": "https://www.tmmi.sg/#/suffolk/",
       "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1759850798818-OXAO7ZB63XB9B5EYUNSS/ogs_web-4.jpg",
       "alt": "TMMI Suffolk Condominium",
-      "roomType": "Uncategorised",
+      "roomType": "Living Room",
       "style": "Uncategorised",
       "source": "TMMI",
       "crawledAt": "2026-03-16T02:59:56.484Z"
@@ -57148,6 +57148,316 @@
       "style": "Uncategorised",
       "source": "TMMI",
       "crawledAt": "2026-03-16T02:59:56.484Z"
+    },
+    {
+      "id": "2b7f5048-1ef8-40dc-bb05-3088eb39ae2d",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940211111-TXGCLB7RN3CK164Z9X03/IMG_0537.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "f3df8d02-fc73-4bec-9c48-bb0559da5d18",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940200341-R9V0XQIT875K2P5XOFI1/IMG_0561.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "425dde55-e769-4c45-bf22-0e9499c56e42",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940199791-KZHGI33HF4IGQGJXHYYU/IMG_0566.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "09c4618b-9ad9-4ab4-afc3-cc0161b3fd0f",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940129700-TIZOG1HAE3JCSQMKA5BK/IMG_0546.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "472b568f-42a5-4f35-9c5c-7dec8a66db0a",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940229387-Z3OCWYZ47ZBHG94WM4KB/IMG_0487.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "2dcb8e56-d7d1-4fdb-b5c6-5c6c2486525d",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940155485-FC7UFXOM23ZLGOFG1A4K/IMG_0003.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "57e6a584-495d-44e7-ac79-39b9bb2d117e",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940149866-LB9E1LA3S0MN00N0OSCO/IMG_0599.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "941ac42e-3acc-4ef1-a928-d844f4adedb2",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940180509-9A1E2GTRRUIL3VD0PR4V/IMG_9972.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "40ffeadd-c05b-4616-b8e0-07f249619969",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940239398-JOB5OJRGX69CEO2A8779/IMG_0476.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "7a6b65b7-3ed7-469a-b7a1-5ae2de56032d",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940179721-NX7RHJ9OYWWUONZSX0CX/IMG_9976.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "2f228bd3-adeb-4669-bce9-cd095333d3c4",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940167189-OUPMCA9LYO09V2CXCF3F/IMG_9996.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "f13e64d4-a99f-4229-aa43-fbb75fe56939",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940240414-5300IN1YKLFF4TN8DQ9I/IMG_0462.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "8a6f53a1-2af2-4354-a204-6449d3ce0040",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940189042-E748ALZ6TZGUR62GC2NM/IMG_9954.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "666a011e-15c3-474f-89e5-ac4df847d6ff",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940217155-7VOBQ6W1562CRI6FZ8MQ/IMG_0510.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "21551a2e-009f-47ba-8984-30a9b3664822",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940114883-0YH1NX58QKO6C92RLILP/IMG_0508.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "18cc51ea-e5ff-4c3a-a97e-50784a8e7371",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940211907-KOXYDPKEMT70B0ZUI2RE/IMG_0534.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "46c93ce2-c343-4824-a3ea-8de720725401",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940161161-WAXZ31ZJKWY4PBGU2YMI/IMG_0025.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "3bfd8d53-5558-47bc-b404-e763ec9abe61",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940183600-42BS9GIKS6HKNGK9LMIV/IMG_9968.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "e6d3f14c-8f64-4bbf-84cd-f7cb43e55eeb",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940205270-CME6R6HKOIMFT97M57YG/IMG_0554.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "8ec28f5f-bf50-45b1-af65-81141aa02cbe",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940205804-4IIJ7SLUE9EBYOB8WSH0/IMG_0551.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "94cd3fab-ac72-4385-a6a7-ff0adad833b0",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940222155-BJR50XA43P5PD2PR4N9B/IMG_0504.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "802ad508-b75f-4712-a97e-2c1b8853de66",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940223708-LF7OTTVWBTCOLRAEXBE0/IMG_0498.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "4dac3d10-06ff-4503-a654-f6f5e6e2ebc0",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940227574-TT9PH9RQNKLCKT1W8WEQ/IMG_0494.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "609bb0bb-5622-4e5b-b4d6-59edf00582e6",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940194523-350KQR46WDX724OI49A7/IMG_0571.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "a0b54fec-ef0c-46ee-9f30-0b580b811c54",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940194019-128IB7M9IPPCLFPWZXHN/IMG_0583.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "828f0571-535d-40ab-ae24-fa4847146c66",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940113654-LLYS68TEUQ8KSNYYDOA4/IMG_0587.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "0166b5d4-8b1c-48da-bd70-411ec914bf58",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940244357-HB7Y0MVMJQBU4KRBDYGG/IMG_0449.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "f915b934-9798-4007-96f3-baa5e44a7975",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940172153-AG5PSW5KMPFL1UXOB54C/IMG_9987.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "c7b920f0-0271-46b0-b424-312ddc7e1cce",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940249843-VXGPQBGP82BX6A11KN48/IMG_0426.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "3e3c2c75-7f81-45a4-abc9-dfbeea7705ae",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940137104-KOSRNS1YYZ0TSLG4NBHE/IMG_0423.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
+    },
+    {
+      "id": "e940d795-043d-4291-af5e-f2d38468286d",
+      "sourceUrl": "https://www.tmmi.sg/#/chai-chee/",
+      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1532940161421-021HXTJN09NVWLZW7VAJ/IMG_9999.jpg",
+      "alt": "TMMI Chai Chee Resale HDB",
+      "roomType": "Uncategorised",
+      "style": "Uncategorised",
+      "source": "TMMI",
+      "crawledAt": "2026-03-17T00:24:22.223Z"
     }
   ],
   "moodboardImages": [
@@ -57197,8 +57507,9 @@
       "id": "affdfc60-a4df-4d3c-a115-a10a96739619",
       "crawledImageId": "c31c8dc3-9f99-4458-93e8-db41a2118649",
       "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/807602/24e0ec5846/1024-width",
-      "comment": "",
-      "addedAt": "2026-03-05T14:12:19.839Z"
+      "comment": "study room vibe",
+      "addedAt": "2026-03-05T14:12:19.839Z",
+      "pinned": true
     },
     {
       "id": "f6af4af7-cd66-4ddc-ae43-34a1a71e9381",
@@ -57246,8 +57557,26 @@
       "id": "9f01ac59-36d5-4ec6-a439-7ff8f0ecf140",
       "crawledImageId": "78b560ec-3df1-4d95-8494-1f4702d650d6",
       "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/720678/4db8087cb2/1024-width",
-      "comment": "",
-      "addedAt": "2026-03-05T15:26:29.082Z"
+      "comment": "dry kitchen idea",
+      "addedAt": "2026-03-05T15:26:29.082Z",
+      "annotations": [
+        {
+          "tool": "rect",
+          "points": [
+            {
+              "x": 0.1884765625,
+              "y": 0.23792093704245973
+            },
+            {
+              "x": 0.4658203125,
+              "y": 0.6830161054172768
+            }
+          ],
+          "color": "#FF4444",
+          "width": 4
+        }
+      ],
+      "pinned": true
     },
     {
       "id": "5c088a46-baa5-4833-8b32-6159a9b54455",
@@ -57344,9 +57673,10 @@
       "id": "59819895-ae21-4e11-8f13-43a1b2b7eb70",
       "crawledImageId": "34c10458-70a6-422f-b681-308429bcc54d",
       "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/824572/a88a5afb69/1024-width",
-      "comment": "",
+      "comment": "like the idea of a fixed cupboard below the shelve so that we can put Beatrice stuff easily. when grown up we can put....",
       "addedAt": "2026-03-06T17:23:52.492Z",
-      "featured": true
+      "featured": true,
+      "pinned": true
     },
     {
       "id": "8b7e35a5-7f12-4d8c-af6c-b1310ce4043b",
@@ -57402,9 +57732,10 @@
       "id": "f13b6b14-67c4-4c7d-b345-8e55cbb4113c",
       "crawledImageId": "4ebd1ad0-6dfe-4be0-8c0f-393b7f263e6b",
       "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/605719/3379844a4e/1024-width",
-      "comment": "",
+      "comment": "similar to our house",
       "addedAt": "2026-03-06T17:31:12.306Z",
-      "featured": true
+      "featured": true,
+      "pinned": true
     },
     {
       "id": "4fc6d53b-70f7-4d4b-9193-985364d2c39d",
@@ -57480,15 +57811,17 @@
       "id": "d4090d0b-0432-433f-995c-54144ef75694",
       "crawledImageId": "9f28eed7-d20a-420c-831d-1fe2d76c7c13",
       "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/749063/1fdc87bd5f/1024-width",
-      "comment": "",
-      "addedAt": "2026-03-06T17:35:55.142Z"
+      "comment": "shelf at the corner can act as shelve where Beatrice can see her books",
+      "addedAt": "2026-03-06T17:35:55.142Z",
+      "pinned": true
     },
     {
       "id": "bc965af0-782a-4391-a17d-67258c6b4bc8",
       "crawledImageId": "370e820e-9bf5-4033-bc75-68cb83571365",
       "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/688213/48f6917a17/1024-width",
-      "comment": "",
-      "addedAt": "2026-03-06T17:36:13.110Z"
+      "comment": "vibes",
+      "addedAt": "2026-03-06T17:36:13.110Z",
+      "pinned": true
     },
     {
       "id": "6a4a95f9-fd25-4a1c-b1f2-e76921f88be6",
@@ -57637,7 +57970,8 @@
       "imageUrl": "https://s3-ap-southeast-1.amazonaws.com/hometrust/public/projects/7008/DeQ5D67Ivx9O8soC1739945870500.jpg",
       "comment": "",
       "addedAt": "2026-03-08T06:23:21.266Z",
-      "featured": true
+      "featured": true,
+      "pinned": true
     },
     {
       "id": "22e8c0a8-c9d9-45fc-85c0-e2ffc55f565c",
@@ -57645,7 +57979,9 @@
       "imageUrl": "https://s3-ap-southeast-1.amazonaws.com/hometrust/public/projects/7094/M9gKLD2d9d1rh5um1744084249500.jpg",
       "comment": "movable furnitures",
       "addedAt": "2026-03-08T10:16:40.375Z",
-      "featured": true
+      "featured": true,
+      "pinned": true,
+      "shortlisted": false
     },
     {
       "id": "98d46541-3637-4a09-9ab2-b5883aa97af7",
@@ -57996,8 +58332,9 @@
       "id": "d023c2f4-0539-4f98-8a9e-ed5a9fe4f501",
       "crawledImageId": "e6c53e5b-c465-49ef-beb0-f49ba31c6084",
       "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/757868/2480b160ca/1024-width",
-      "comment": "",
-      "addedAt": "2026-03-11T16:48:18.583Z"
+      "comment": "configuration looks like 168",
+      "addedAt": "2026-03-11T16:48:18.583Z",
+      "pinned": true
     },
     {
       "id": "c30deee3-944b-4d2b-87cd-8401b54df21b",
@@ -58024,8 +58361,9 @@
       "id": "f4c9d00c-b98e-40a4-9512-1aa4b658c27e",
       "crawledImageId": "2f745fb6-0e32-4f77-b6c5-25505e358926",
       "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/752604/e5039c410c/1024-width",
-      "comment": "",
-      "addedAt": "2026-03-11T16:53:30.692Z"
+      "comment": "can keep this space for coffee machine etc",
+      "addedAt": "2026-03-11T16:53:30.692Z",
+      "pinned": true
     },
     {
       "id": "318aa9d1-de15-4da5-ae5f-c93a13adb37f",
@@ -58283,9 +58621,10 @@
       "id": "6c5d2225-f72c-4dd3-971c-f86dbc80957d",
       "crawledImageId": "df64a5bc-f9f3-4b52-9c35-b943a8a052d7",
       "imageUrl": "https://stacked-editorial.sgp1.digitaloceanspaces.com/editorial/wp-content/uploads/2024/01/07011936/Inside-A-Couples-Playfully-Curated-HDB-Home-With-A-TV-Gallery-Wall-3-1600x891.webp",
-      "comment": "",
+      "comment": "translucent bookshelf as a divider",
       "addedAt": "2026-03-12T07:57:57.072Z",
-      "featured": true
+      "featured": true,
+      "pinned": true
     },
     {
       "id": "2fb918f5-0025-4215-870a-3c6dc3bda199",
@@ -58466,8 +58805,26 @@
       "id": "7ab9c92f-64d4-4a96-93e2-6ca390a0c526",
       "crawledImageId": "4c31f422-436a-4b9d-9f92-2927376b9b73",
       "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/749064/8b763d2269/1024-width",
-      "comment": "",
-      "addedAt": "2026-03-12T08:07:35.897Z"
+      "comment": "this section is neat",
+      "addedAt": "2026-03-12T08:07:35.897Z",
+      "annotations": [
+        {
+          "tool": "rect",
+          "points": [
+            {
+              "x": 0.5947265625,
+              "y": 0.5878477306002928
+            },
+            {
+              "x": 0.994140625,
+              "y": 0.8704245973645681
+            }
+          ],
+          "color": "#FF4444",
+          "width": 4
+        }
+      ],
+      "pinned": true
     },
     {
       "id": "1f42ff00-5fed-4928-a5ce-30a9d7f1dfeb",
@@ -58683,8 +59040,9 @@
       "id": "2bb30005-75ff-433c-a131-8fb9c05eb536",
       "crawledImageId": "5d8fffb8-ca03-42ea-8b2e-956ee63f64d8",
       "imageUrl": "https://stacked-editorial.sgp1.digitaloceanspaces.com/editorial/wp-content/uploads/2023/08/06160214/Inside-a-Calming-transformation-of-a-5-room-hdb-7-1600x897.png",
-      "comment": "",
-      "addedAt": "2026-03-12T08:46:06.996Z"
+      "comment": "fixed area for plants",
+      "addedAt": "2026-03-12T08:46:06.996Z",
+      "pinned": true
     },
     {
       "id": "9b0a15ca-ef2c-4fbf-9a6b-b005a9e3f7ce",
@@ -58768,8 +59126,9 @@
       "id": "a91d97d1-6d44-495e-9cee-d8e9c9bd3865",
       "crawledImageId": "de5275e8-c653-46f7-8bbb-e683a112b768",
       "imageUrl": "https://stacked-editorial.sgp1.digitaloceanspaces.com/editorial/wp-content/uploads/2023/03/26154012/2-room-flexi-renovation-1.jpg",
-      "comment": "",
-      "addedAt": "2026-03-12T08:55:38.441Z"
+      "comment": "illustrates how ikea shelves can be presented nicely too",
+      "addedAt": "2026-03-12T08:55:38.441Z",
+      "pinned": true
     },
     {
       "id": "735481f5-c825-4b9e-8562-bdd2f44943a3",
@@ -58938,15 +59297,10 @@
       "id": "cdafb6bb-8665-475d-9f6d-f202962a4259",
       "crawledImageId": "a529ce37-f761-4cdb-91f1-95737792623f",
       "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1759850798818-OXAO7ZB63XB9B5EYUNSS/ogs_web-4.jpg",
-      "comment": "",
-      "addedAt": "2026-03-16T13:25:43.910Z"
-    },
-    {
-      "id": "e9a674ae-70ce-48cc-8cf7-22d5acbc755c",
-      "crawledImageId": "de340a96-cd89-4bb3-a832-146e8c07606e",
-      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1759850803246-VS4R1VP7JV5U6FN9PLDE/ogs_web-3.jpg",
-      "comment": "",
-      "addedAt": "2026-03-16T13:25:45.440Z"
+      "comment": "splashes of color on the table is good\n",
+      "addedAt": "2026-03-16T13:25:43.910Z",
+      "featured": true,
+      "pinned": true
     },
     {
       "id": "e68ecc76-fd87-4a13-aa26-e37992899346",
@@ -58974,21 +59328,16 @@
       "crawledImageId": "501ab781-ba3b-4780-b6f6-b196e0b25cd6",
       "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1759896201190-V24BQRJ7WUSTJF9QC4MD/IMG-35_edited.jpg",
       "comment": "",
-      "addedAt": "2026-03-16T13:26:05.971Z"
-    },
-    {
-      "id": "ac12bd83-6d53-4a1b-b329-2ab46077ee1c",
-      "crawledImageId": "cda16bfd-c0dc-4575-96cc-517db0f3e03e",
-      "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1759469962880-VEJHJC43VUX3DVVSEI7V/IMG-12.JPG",
-      "comment": "",
-      "addedAt": "2026-03-16T13:26:10.389Z"
+      "addedAt": "2026-03-16T13:26:05.971Z",
+      "pinned": true
     },
     {
       "id": "1d976791-0bb2-4da3-83c6-e5d59fb4095e",
       "crawledImageId": "e79c4e1b-3074-4489-8ed0-a64d00eff822",
       "imageUrl": "https://images.squarespace-cdn.com/content/v1/591807211e5b6c9407391752/1759470373029-YIQ5IBPTTILO1J72DAI4/IMG-47.JPG",
       "comment": "",
-      "addedAt": "2026-03-16T13:26:28.355Z"
+      "addedAt": "2026-03-16T13:26:28.355Z",
+      "pinned": false
     }
   ],
   "ignoredIds": [
@@ -63154,10 +63503,11 @@
       "url": "https://www.instagram.com/reel/DVqnIprCBFj/?utm_source=ig_web_copy_link",
       "source": "Instagram",
       "title": "Nice Open Design",
-      "note": "",
+      "note": "Nice Open Design",
       "roomType": "Living Room",
       "style": "",
-      "savedAt": "2026-03-15T14:53:03.428Z"
+      "savedAt": "2026-03-15T14:53:03.428Z",
+      "pinned": true
     },
     {
       "id": "65d387c7-adce-4114-b435-9010ec403c93",
@@ -63167,7 +63517,8 @@
       "note": "",
       "roomType": "Living Room",
       "style": "",
-      "savedAt": "2026-03-15T14:55:23.881Z"
+      "savedAt": "2026-03-15T14:55:23.881Z",
+      "pinned": true
     },
     {
       "id": "fa718926-9095-4147-9ff9-535ef00bc7a2",
@@ -63177,7 +63528,8 @@
       "note": "",
       "roomType": "Living Room",
       "style": "",
-      "savedAt": "2026-03-15T14:56:10.023Z"
+      "savedAt": "2026-03-15T14:56:10.023Z",
+      "pinned": true
     }
   ]
 }
