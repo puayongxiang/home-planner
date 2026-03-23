@@ -12,9 +12,9 @@ echo "Preparing static export..."
 # Move API routes out temporarily
 mv "$API_DIR" "$BACKUP_DIR"
 
-# Also move dev-only pages
+# Also move server-only and dev-only routes/pages
 mkdir -p .pages-backup
-for page in browse ignored furniture playground; do
+for page in auth browse ignored furniture playground; do
   if [ -d "src/app/$page" ]; then
     mv "src/app/$page" ".pages-backup/$page"
   fi
@@ -25,7 +25,7 @@ STATIC_EXPORT=1 npx next build
 
 # Restore API routes and pages
 mv "$BACKUP_DIR" "$API_DIR"
-for page in browse ignored furniture playground; do
+for page in auth browse ignored furniture playground; do
   if [ -d ".pages-backup/$page" ]; then
     mv ".pages-backup/$page" "src/app/$page"
   fi

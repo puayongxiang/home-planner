@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import { requireEditorUser } from "@/lib/auth";
 import { addCrawledImages, listCrawledImages } from "@/lib/repository";
 
 
@@ -149,6 +150,11 @@ function parseStyleFromTitle(title: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const { startPage = 1, endPage = 5 } = await req.json();
 
   const encoder = new TextEncoder();

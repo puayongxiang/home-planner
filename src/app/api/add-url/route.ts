@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import { requireEditorUser } from "@/lib/auth";
 import { addCrawledImage, hasCrawledImageByImageUrlOrSourceUrl } from "@/lib/repository";
 
 
@@ -42,6 +43,11 @@ async function extractOgImage(url: string): Promise<{ imageUrl: string; title: s
 }
 
 export async function POST(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const { url, roomType, style } = await req.json();
 
   if (!url) {

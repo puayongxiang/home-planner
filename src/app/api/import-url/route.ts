@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import { requireEditorUser } from "@/lib/auth";
 import { addCrawledImages, listCrawledImages } from "@/lib/repository";
 
 
@@ -141,6 +142,11 @@ function isProjectImage(src: string, pageUrl: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const { url } = await req.json();
 
   if (!url) {

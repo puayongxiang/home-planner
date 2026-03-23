@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useAuthSession } from "@/components/useAuthSession";
 import { MoodboardImage, SavedLink, FurnitureItem, Stroke, DrawTool, ROOM_TYPES, STYLES } from "@/lib/types";
 import AnnotationCanvas from "@/components/AnnotationCanvas";
 
@@ -61,6 +62,7 @@ function getEmbedUrl(url: string, source: string): string | null {
 }
 
 export default function MoodboardGallery({ initialImages, initialLinks = [], initialFurniture = [] }: { initialImages: EnrichedMoodboardImage[]; initialLinks?: SavedLink[]; initialFurniture?: FurnitureItem[] }) {
+  const { user, loading: authLoading, isAuthenticated, signInWithGoogle, signOut } = useAuthSession();
   const [images, setImages] = useState<EnrichedMoodboardImage[]>(initialImages);
   const [savedLinks, setSavedLinks] = useState<SavedLink[]>(initialLinks);
   const [furnitureItems, setFurnitureItems] = useState<FurnitureItem[]>(initialFurniture);
@@ -347,6 +349,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleAddUrl() {
+    if (!isAuthenticated) {
+      setAddUrlStatus("Sign in to add URLs.");
+      return;
+    }
     if (!addUrl.trim()) return;
     setAddingUrl(true);
     setAddUrlStatus("");
@@ -358,6 +364,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401) {
+          setAddUrlStatus("Sign in to add URLs.");
+          return;
+        }
         setAddUrlStatus(data.error || "Failed to add");
       } else {
         await fetch("/api/moodboard", {
@@ -632,6 +642,32 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
           </div>
           {!isStatic && (
             <div className="flex items-center gap-2">
+              {authLoading ? (
+                <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+                  Checking...
+                </span>
+              ) : user ? (
+                <>
+                  <span className="hidden sm:inline text-sm" style={{ color: "var(--text-muted)" }}>
+                    {user.email}
+                  </span>
+                  <button
+                    onClick={signOut}
+                    className="px-3 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 cursor-pointer"
+                    style={{ background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-light)" }}
+                  >
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={signInWithGoogle}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 cursor-pointer"
+                  style={{ background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-light)" }}
+                >
+                  Sign in with Google
+                </button>
+              )}
               <Link
                 href="/browse"
                 className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
@@ -847,7 +883,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
       )}
 
       {/* FAB + Add URL modal — dev only */}
-      {!isStatic && (
+      {!isStatic && isAuthenticated && (
         <>
           <button
             onClick={() => setShowAddUrl(!showAddUrl)}

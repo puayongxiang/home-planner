@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useAuthSession } from "@/components/useAuthSession";
 import {
   CrawledImage,
   MoodboardImage,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/types";
 
 export default function BrowsePage() {
+  const { user, loading: authLoading, isAuthenticated, signInWithGoogle, signOut } = useAuthSession();
   const [selectedStyles, setSelectedStyles] = useState<string[]>(["Japandi"]);
   const [selectedRooms, setSelectedRooms] = useState<string[]>([
     ...ROOM_TYPES,
@@ -167,6 +169,10 @@ export default function BrowsePage() {
   }
 
   async function handleCrawl() {
+    if (!isAuthenticated) {
+      setStatus("Sign in to crawl new images.");
+      return;
+    }
     if (selectedRooms.length === 0) return;
     setCrawling(true);
     setCrawlProgress(null);
@@ -237,8 +243,16 @@ export default function BrowsePage() {
   }
 
   async function handleClear() {
+    if (!isAuthenticated) {
+      setStatus("Sign in to manage the crawl catalog.");
+      return;
+    }
     if (!confirm("Clear all crawled images and moodboard?")) return;
-    await fetch("/api/crawl", { method: "DELETE" });
+    const res = await fetch("/api/crawl", { method: "DELETE" });
+    if (res.status === 401) {
+      setStatus("Sign in to manage the crawl catalog.");
+      return;
+    }
     setCrawledImages([]);
     setMoodboardMap(new Map());
     setIgnoredIds(new Set());
@@ -286,6 +300,10 @@ export default function BrowsePage() {
   }
 
   async function handleAddUrl() {
+    if (!isAuthenticated) {
+      setAddUrlStatus("Sign in to add URLs.");
+      return;
+    }
     if (!addUrl.trim()) return;
     setAddingUrl(true);
     setAddUrlStatus("");
@@ -301,6 +319,10 @@ export default function BrowsePage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401) {
+          setAddUrlStatus("Sign in to add URLs.");
+          return;
+        }
         setAddUrlStatus(data.error || "Failed to add URL");
       } else {
         setAddUrlStatus("Added!");
@@ -315,6 +337,10 @@ export default function BrowsePage() {
   }
 
   async function handleStackedHomesCrawl() {
+    if (!isAuthenticated) {
+      setShStatus("Sign in to crawl new images.");
+      return;
+    }
     setShCrawling(true);
     setShProgress("");
     setShStatus("");
@@ -378,6 +404,10 @@ export default function BrowsePage() {
   }
 
   async function handleImport() {
+    if (!isAuthenticated) {
+      setImportStatus("Sign in to import URLs.");
+      return;
+    }
     if (!importUrl.trim()) return;
     setImporting(true);
     setImportStatus("");
@@ -389,6 +419,10 @@ export default function BrowsePage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401) {
+          setImportStatus("Sign in to import URLs.");
+          return;
+        }
         setImportStatus(data.error || "Import failed");
       } else {
         setImportStatus(`Imported ${data.added} image${data.added !== 1 ? "s" : ""}${data.skipped > 0 ? ` (${data.skipped} already existed)` : ""}`);
@@ -442,54 +476,58 @@ export default function BrowsePage() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => { setShowStackedHomes(!showStackedHomes); if (!showStackedHomes) { setShowImport(false); setShowAddUrl(false); setShowCrawlForm(false); } }}
-              className="text-sm cursor-pointer transition-colors"
-              style={{
-                color: showStackedHomes ? "var(--accent-terracotta)" : "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              {showStackedHomes ? "Close" : "StackedHomes"}
-            </button>
-            <button
-              onClick={() => { setShowImport(!showImport); if (!showImport) { setShowAddUrl(false); setShowCrawlForm(false); setShowStackedHomes(false); } }}
-              className="text-sm cursor-pointer transition-colors"
-              style={{
-                color: showImport ? "var(--accent-terracotta)" : "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              {showImport ? "Close" : "Import"}
-            </button>
-            <button
-              onClick={() => { setShowAddUrl(!showAddUrl); if (!showAddUrl) { setShowCrawlForm(false); setShowImport(false); setShowStackedHomes(false); } }}
-              className="text-sm cursor-pointer transition-colors"
-              style={{
-                color: showAddUrl ? "var(--accent-terracotta)" : "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              {showAddUrl ? "Close" : "+ URL"}
-            </button>
-            <button
-              onClick={() => { setShowCrawlForm(!showCrawlForm); if (!showCrawlForm) { setShowAddUrl(false); setShowImport(false); setShowStackedHomes(false); } }}
-              className="text-sm cursor-pointer transition-colors"
-              style={{
-                color: showCrawlForm ? "var(--accent-terracotta)" : "var(--text-secondary)",
-                fontWeight: 500,
-              }}
-            >
-              {showCrawlForm ? "Close" : "Crawl"}
-            </button>
-            {crawledImages.length > 0 && (
-              <button
-                onClick={handleClear}
-                className="text-sm cursor-pointer"
-                style={{ color: "var(--text-muted)" }}
-              >
-                Clear
-              </button>
+            {isAuthenticated && (
+              <>
+                <button
+                  onClick={() => { setShowStackedHomes(!showStackedHomes); if (!showStackedHomes) { setShowImport(false); setShowAddUrl(false); setShowCrawlForm(false); } }}
+                  className="text-sm cursor-pointer transition-colors"
+                  style={{
+                    color: showStackedHomes ? "var(--accent-terracotta)" : "var(--text-secondary)",
+                    fontWeight: 500,
+                  }}
+                >
+                  {showStackedHomes ? "Close" : "StackedHomes"}
+                </button>
+                <button
+                  onClick={() => { setShowImport(!showImport); if (!showImport) { setShowAddUrl(false); setShowCrawlForm(false); setShowStackedHomes(false); } }}
+                  className="text-sm cursor-pointer transition-colors"
+                  style={{
+                    color: showImport ? "var(--accent-terracotta)" : "var(--text-secondary)",
+                    fontWeight: 500,
+                  }}
+                >
+                  {showImport ? "Close" : "Import"}
+                </button>
+                <button
+                  onClick={() => { setShowAddUrl(!showAddUrl); if (!showAddUrl) { setShowCrawlForm(false); setShowImport(false); setShowStackedHomes(false); } }}
+                  className="text-sm cursor-pointer transition-colors"
+                  style={{
+                    color: showAddUrl ? "var(--accent-terracotta)" : "var(--text-secondary)",
+                    fontWeight: 500,
+                  }}
+                >
+                  {showAddUrl ? "Close" : "+ URL"}
+                </button>
+                <button
+                  onClick={() => { setShowCrawlForm(!showCrawlForm); if (!showCrawlForm) { setShowAddUrl(false); setShowImport(false); setShowStackedHomes(false); } }}
+                  className="text-sm cursor-pointer transition-colors"
+                  style={{
+                    color: showCrawlForm ? "var(--accent-terracotta)" : "var(--text-secondary)",
+                    fontWeight: 500,
+                  }}
+                >
+                  {showCrawlForm ? "Close" : "Crawl"}
+                </button>
+                {crawledImages.length > 0 && (
+                  <button
+                    onClick={handleClear}
+                    className="text-sm cursor-pointer"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Clear
+                  </button>
+                )}
+              </>
             )}
             <Link
               href="/ignored"
@@ -501,9 +539,43 @@ export default function BrowsePage() {
                 <span className="ml-1 opacity-70">({ignoredIds.size})</span>
               )}
             </Link>
+            {authLoading ? (
+              <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+                Checking...
+              </span>
+            ) : user ? (
+              <>
+                <span className="hidden sm:inline text-sm" style={{ color: "var(--text-muted)" }}>
+                  {user.email}
+                </span>
+                <button
+                  onClick={signOut}
+                  className="text-sm cursor-pointer transition-colors"
+                  style={{ color: "var(--text-secondary)", fontWeight: 500 }}
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={signInWithGoogle}
+                className="px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-all"
+                style={{ background: "var(--text-primary)", color: "var(--bg-primary)" }}
+              >
+                Sign in with Google
+              </button>
+            )}
           </div>
         </div>
       </header>
+
+      {!isAuthenticated && !authLoading && (
+        <div className="max-w-[1400px] mx-auto px-6 pt-4">
+          <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+            Sign in with Google to add URLs, import pages, or run crawls. Browsing existing images stays open.
+          </p>
+        </div>
+      )}
 
       <main className="max-w-[1400px] mx-auto px-6">
         {/* StackedHomes Crawl */}

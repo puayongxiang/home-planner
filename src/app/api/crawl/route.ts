@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { v4 as uuidv4 } from "uuid";
+import { requireEditorUser } from "@/lib/auth";
 import {
   addCrawledImages,
   clearCrawledWorkspace,
@@ -81,6 +82,11 @@ async function crawlPage(
 }
 
 export async function POST(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const { styles, roomTypes, scrollCount = 5 } = await req.json();
 
   if (
@@ -178,6 +184,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const { id, roomType, style } = await req.json();
   if (!id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
@@ -194,6 +205,11 @@ export async function GET() {
 }
 
 export async function DELETE() {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   await clearCrawledWorkspace();
   return NextResponse.json({ success: true });
 }
