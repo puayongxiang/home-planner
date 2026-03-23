@@ -4,6 +4,7 @@ import {
   createSavedLink,
   deleteSavedLink,
   hasSavedLinkByUrl,
+  isDuplicateConstraintError,
   listSavedLinks,
   updateSavedLink,
 } from "@/lib/repository";
@@ -33,17 +34,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This link is already saved" }, { status: 409 });
   }
 
-  const link = await createSavedLink({
-    id: uuidv4(),
-    url,
-    source: detectSource(url),
-    title: title || "",
-    note: note || "",
-    roomType: roomType || "",
-    style: style || "",
-  });
+  try {
+    const link = await createSavedLink({
+      id: uuidv4(),
+      url,
+      source: detectSource(url),
+      title: title || "",
+      note: note || "",
+      roomType: roomType || "",
+      style: style || "",
+    });
 
-  return NextResponse.json(link);
+    return NextResponse.json(link);
+  } catch (error) {
+    if (isDuplicateConstraintError(error)) {
+      return NextResponse.json({ error: "This link is already saved" }, { status: 409 });
+    }
+
+    throw error;
+  }
 }
 
 export async function PUT(req: NextRequest) {

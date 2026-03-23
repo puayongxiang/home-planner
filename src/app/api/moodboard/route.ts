@@ -4,6 +4,7 @@ import {
   createMoodboardImage,
   deleteMoodboardImage,
   hasMoodboardImageForCrawledImage,
+  isDuplicateConstraintError,
   listEnrichedMoodboardImages,
   updateMoodboardImage,
 } from "@/lib/repository";
@@ -23,13 +24,24 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const entry = await createMoodboardImage({
-    id: uuidv4(),
-    crawledImageId,
-    imageUrl,
-  });
+  try {
+    const entry = await createMoodboardImage({
+      id: uuidv4(),
+      crawledImageId,
+      imageUrl,
+    });
 
-  return NextResponse.json(entry);
+    return NextResponse.json(entry);
+  } catch (error) {
+    if (isDuplicateConstraintError(error)) {
+      return NextResponse.json(
+        { error: "Already in moodboard" },
+        { status: 400 }
+      );
+    }
+
+    throw error;
+  }
 }
 
 export async function PUT(req: NextRequest) {

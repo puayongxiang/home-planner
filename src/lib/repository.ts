@@ -120,6 +120,14 @@ interface IgnoredImageRow {
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const IS_STATIC_EXPORT = process.env.STATIC_EXPORT === "1";
+
+class DuplicateConstraintError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DuplicateConstraintError";
+  }
+}
 
 function requireEnv(name: string, value: string | undefined): string {
   if (!value) {
@@ -153,7 +161,7 @@ async function supabaseRequest<T>(
     params?: Record<string, string | undefined>;
     body?: unknown;
     prefer?: string;
-    allowEmpty?: boolean;
+    cache?: RequestCache;
   }
 ): Promise<T> {
   const response = await fetch(buildUrl(table, options?.params), {
@@ -164,12 +172,23 @@ async function supabaseRequest<T>(
       "Content-Type": "application/json",
       Prefer: options?.prefer || "return=representation",
     },
-    cache: "no-store",
+    cache: options?.cache || "no-store",
     body: options?.body === undefined ? undefined : JSON.stringify(options.body),
   });
 
   if (!response.ok) {
     const body = await response.text();
+    let parsed: { code?: string; message?: string } | null = null;
+    if (body) {
+      try {
+        parsed = JSON.parse(body) as { code?: string; message?: string };
+      } catch {
+        parsed = null;
+      }
+    }
+    if (response.status === 409 || parsed?.code === "23505") {
+      throw new DuplicateConstraintError(parsed?.message || `Duplicate row in ${table}`);
+    }
     throw new Error(`Supabase ${method} ${table} failed: ${body}`);
   }
 
@@ -183,6 +202,14 @@ async function supabaseRequest<T>(
   }
 
   return JSON.parse(text) as T;
+}
+
+function readCacheMode(): RequestCache {
+  return IS_STATIC_EXPORT ? "force-cache" : "no-store";
+}
+
+export function isDuplicateConstraintError(error: unknown): boolean {
+  return error instanceof DuplicateConstraintError;
 }
 
 function mapCrawledImageRow(row: CrawledImageRow): CrawledImage {
@@ -257,6 +284,7 @@ export async function listCrawledImages(): Promise<CrawledImage[]> {
       select: "*",
       order: "crawled_at.desc",
     },
+    cache: readCacheMode(),
   });
 
   return rows.map(mapCrawledImageRow);
@@ -348,6 +376,7 @@ export async function listIgnoredIds(): Promise<string[]> {
       select: "crawled_image_id",
       order: "created_at.desc",
     },
+    cache: readCacheMode(),
   });
 
   return rows.map((row) => row.crawled_image_id);
@@ -376,6 +405,7 @@ export async function listFurnitureItems(): Promise<FurnitureItem[]> {
       select: "*",
       order: "added_at.desc",
     },
+    cache: readCacheMode(),
   });
 
   return rows.map(mapFurnitureItemRow);
@@ -433,6 +463,7 @@ export async function listSavedLinks(): Promise<SavedLink[]> {
       select: "*",
       order: "saved_at.desc",
     },
+    cache: readCacheMode(),
   });
 
   return rows.map(mapSavedLinkRow);
@@ -497,11 +528,13 @@ export async function listEnrichedMoodboardImages(): Promise<EnrichedMoodboardIm
         select: "*",
         order: "added_at.desc",
       },
+      cache: readCacheMode(),
     }),
     supabaseRequest<CrawledImageRow[]>("GET", "crawled_images", {
       params: {
         select: "id,room_type,style",
       },
+      cache: readCacheMode(),
     }),
   ]);
 
