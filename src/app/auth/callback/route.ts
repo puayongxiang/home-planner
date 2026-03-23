@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isEditorEmail } from "@/lib/auth";
+import { isEditorEmail } from "@/lib/editorAccess";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(req: NextRequest) {

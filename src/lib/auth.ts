@@ -1,15 +1,7 @@
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
+import { isEditorEmail } from "@/lib/editorAccess";
 import { createClient } from "@/lib/supabase/server";
-
-const EDITOR_EMAILS = new Set([
-  "puayongxiang@gmail.com",
-  "evonne89@gmail.com",
-]);
-
-export function isEditorEmail(email: string | null | undefined): boolean {
-  return !!email && EDITOR_EMAILS.has(email.toLowerCase());
-}
 
 export async function getAuthenticatedUser(): Promise<User | null> {
   const supabase = await createClient();
