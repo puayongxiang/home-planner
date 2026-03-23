@@ -12,7 +12,7 @@ interface EnrichedMoodboardImage extends MoodboardImage {
 }
 
 const isStatic = process.env.NEXT_PUBLIC_STATIC === "1";
-const isCloudDeploy = process.env.NEXT_PUBLIC_CLOUD_DEPLOY === "1";
+const showInternalTools = process.env.NEXT_PUBLIC_ENABLE_INTERNAL_TOOLS === "1";
 
 const STYLE_COLORS: Record<string, string> = {
   Japandi: "#C4775B",
@@ -669,7 +669,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
                   Sign in with Google
                 </button>
               )}
-              {!isCloudDeploy && !!user && (
+              {showInternalTools && !!user && (
                 <Link
                   href="/browse"
                   className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
@@ -860,7 +860,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
             <p className="text-2xl mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}>
               No items yet
             </p>
-            {!isStatic && !isCloudDeploy && !!user && (
+            {!isStatic && showInternalTools && !!user && (
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                 Go{" "}
                 <Link href="/browse" className="underline" style={{ color: "var(--accent-sage)" }}>
@@ -874,7 +874,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
       </main>
 
       {/* Playground FAB — dev only */}
-      {!isStatic && !isCloudDeploy && !!user && (
+      {!isStatic && showInternalTools && !!user && (
         <Link
           href="/playground"
           className="fixed bottom-6 right-24 z-40 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-md"

@@ -19,7 +19,8 @@ const nextConfig: NextConfig = {
   },
   env: {
     NEXT_PUBLIC_STATIC: isStaticExport ? "1" : "",
-    NEXT_PUBLIC_CLOUD_DEPLOY: process.env.VERCEL === "1" ? "1" : "",
+    NEXT_PUBLIC_ENABLE_INTERNAL_TOOLS:
+      process.env.NEXT_PUBLIC_ENABLE_INTERNAL_TOOLS || "",
   },
   serverExternalPackages: ["puppeteer"],
 };
