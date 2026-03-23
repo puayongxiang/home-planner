@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:static": "bash scripts/static-build.sh",
     "import:supabase": "node --env-file=.env scripts/import-db-json-to-supabase.mjs",
     "start": "next start",
     "lint": "eslint"

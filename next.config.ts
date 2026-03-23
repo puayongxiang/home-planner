@@ -1,11 +1,7 @@
 import type { NextConfig } from "next";
 
-const isStaticExport = !!process.env.STATIC_EXPORT;
-
 const nextConfig: NextConfig = {
-  output: isStaticExport ? "export" : undefined,
   images: {
-    unoptimized: isStaticExport,
     remotePatterns: [
       {
         protocol: "https",
@@ -18,7 +14,6 @@ const nextConfig: NextConfig = {
     ],
   },
   env: {
-    NEXT_PUBLIC_STATIC: isStaticExport ? "1" : "",
     NEXT_PUBLIC_ENABLE_INTERNAL_TOOLS:
       process.env.NEXT_PUBLIC_ENABLE_INTERNAL_TOOLS || "",
   },

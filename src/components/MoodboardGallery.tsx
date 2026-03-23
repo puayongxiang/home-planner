@@ -11,7 +11,7 @@ interface EnrichedMoodboardImage extends MoodboardImage {
   style: string;
 }
 
-const isStatic = process.env.NEXT_PUBLIC_STATIC === "1";
+const isStatic = false;
 const showInternalTools = process.env.NEXT_PUBLIC_ENABLE_INTERNAL_TOOLS === "1";
 
 const STYLE_COLORS: Record<string, string> = {
@@ -350,6 +350,11 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleAddUrl() {
+    if (isStatic) {
+      setAddUrlStatus("Static deployment is read-only.");
+      return;
+    }
+
     if (!isAuthenticated) {
       setAddUrlStatus("Sign in to add URLs.");
       return;
@@ -390,6 +395,11 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleAddLink() {
+    if (isStatic) {
+      setAddLinkStatus("Static deployment is read-only.");
+      return;
+    }
+
     const url = linkForm.url.trim();
     if (!url) return;
     setAddingLink(true);
@@ -417,6 +427,11 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleAddFurniture() {
+    if (isStatic) {
+      setAddFurnitureStatus("Static deployment is read-only.");
+      return;
+    }
+
     if (!furnitureForm.name.trim()) return;
     setAddingFurniture(true);
     setAddFurnitureStatus("");
@@ -442,6 +457,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleToggleLinkPin(id: string) {
+    if (isStatic) {
+      return;
+    }
+
     const link = savedLinks.find((l) => l.id === id);
     if (!link) return;
     const newPinned = !link.pinned;
@@ -454,6 +473,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleRemoveLink(id: string) {
+    if (isStatic) {
+      return;
+    }
+
     setSavedLinks((prev) => prev.filter((l) => l.id !== id));
     await fetch("/api/saved-links", {
       method: "DELETE",
@@ -463,6 +486,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleLinkFieldChange(id: string, field: string, value: string) {
+    if (isStatic) {
+      return;
+    }
+
     setSavedLinks((prev) => prev.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
     const key = `link-${field}-${id}`;
     const existing = debounceTimers.current.get(key);
@@ -481,6 +508,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleToggleFurniturePin(id: string) {
+    if (isStatic) {
+      return;
+    }
+
     const item = furnitureItems.find((f) => f.id === id);
     if (!item) return;
     const newPinned = !item.pinned;
@@ -493,6 +524,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleRemoveFurniture(id: string) {
+    if (isStatic) {
+      return;
+    }
+
     setFurnitureItems((prev) => prev.filter((f) => f.id !== id));
     await fetch("/api/furniture", {
       method: "DELETE",
@@ -502,6 +537,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleFurnitureFieldChange(id: string, field: string, value: string) {
+    if (isStatic) {
+      return;
+    }
+
     setFurnitureItems((prev) => prev.map((f) => (f.id === id ? { ...f, [field]: value } : f)));
     const key = `furniture-${field}-${id}`;
     const existing = debounceTimers.current.get(key);
@@ -520,6 +559,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleCommentChange(id: string, comment: string) {
+    if (isStatic) {
+      return;
+    }
+
     setImages((prev) => prev.map((img) => (img.id === id ? { ...img, comment } : img)));
     const existing = debounceTimers.current.get(id);
     if (existing) clearTimeout(existing);
@@ -537,6 +580,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleRemove(id: string) {
+    if (isStatic) {
+      return;
+    }
+
     await fetch("/api/moodboard", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -547,6 +594,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleAnnotationAdd(id: string, stroke: Stroke) {
+    if (isStatic) {
+      return;
+    }
+
     setImages((prev) =>
       prev.map((img) =>
         img.id === id ? { ...img, annotations: [...(img.annotations || []), stroke] } : img
@@ -571,6 +622,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleAnnotationUndo(id: string) {
+    if (isStatic) {
+      return;
+    }
+
     setImages((prev) =>
       prev.map((img) => {
         if (img.id !== id || !img.annotations?.length) return img;
@@ -586,6 +641,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleAnnotationClear(id: string) {
+    if (isStatic) {
+      return;
+    }
+
     setImages((prev) =>
       prev.map((img) => {
         if (img.id !== id) return img;
@@ -600,6 +659,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleUpdateRoomType(moodboardId: string, crawledImageId: string, roomType: string) {
+    if (isStatic) {
+      return;
+    }
+
     const res = await fetch("/api/crawl", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -615,6 +678,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleTogglePin(id: string) {
+    if (isStatic) {
+      return;
+    }
+
     const img = images.find((i) => i.id === id);
     if (!img) return;
     const newPinned = !img.pinned;
@@ -684,6 +751,23 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
       </header>
 
       {/* View tabs */}
+      {isStatic && (
+        <div
+          className="max-w-[1800px] mx-auto px-3 sm:px-6 pt-4"
+        >
+          <div
+            className="rounded-xl px-4 py-3 text-sm"
+            style={{
+              background: "var(--accent-sage-light)",
+              color: "var(--accent-sage)",
+              border: "1px solid var(--border-light)",
+            }}
+          >
+            Static deployment is active. Editing, sign-in, and API-backed actions are disabled.
+          </div>
+        </div>
+      )}
+
       {(images.length > 0 || savedLinks.length > 0 || furnitureItems.length > 0) && (
         <div
           className="sticky z-[25] backdrop-blur-md"

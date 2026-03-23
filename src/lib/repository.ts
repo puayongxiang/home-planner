@@ -120,7 +120,6 @@ interface IgnoredImageRow {
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const IS_STATIC_EXPORT = process.env.STATIC_EXPORT === "1";
 
 class DuplicateConstraintError extends Error {
   constructor(message: string) {
@@ -204,10 +203,6 @@ async function supabaseRequest<T>(
   return JSON.parse(text) as T;
 }
 
-function readCacheMode(): RequestCache {
-  return IS_STATIC_EXPORT ? "force-cache" : "no-store";
-}
-
 export function isDuplicateConstraintError(error: unknown): boolean {
   return error instanceof DuplicateConstraintError;
 }
@@ -284,7 +279,7 @@ export async function listCrawledImages(): Promise<CrawledImage[]> {
       select: "*",
       order: "crawled_at.desc",
     },
-    cache: readCacheMode(),
+    cache: "no-store",
   });
 
   return rows.map(mapCrawledImageRow);
@@ -376,7 +371,7 @@ export async function listIgnoredIds(): Promise<string[]> {
       select: "crawled_image_id",
       order: "created_at.desc",
     },
-    cache: readCacheMode(),
+    cache: "no-store",
   });
 
   return rows.map((row) => row.crawled_image_id);
@@ -405,7 +400,7 @@ export async function listFurnitureItems(): Promise<FurnitureItem[]> {
       select: "*",
       order: "added_at.desc",
     },
-    cache: readCacheMode(),
+    cache: "no-store",
   });
 
   return rows.map(mapFurnitureItemRow);
@@ -463,7 +458,7 @@ export async function listSavedLinks(): Promise<SavedLink[]> {
       select: "*",
       order: "saved_at.desc",
     },
-    cache: readCacheMode(),
+    cache: "no-store",
   });
 
   return rows.map(mapSavedLinkRow);
@@ -528,13 +523,13 @@ export async function listEnrichedMoodboardImages(): Promise<EnrichedMoodboardIm
         select: "*",
         order: "added_at.desc",
       },
-      cache: readCacheMode(),
+      cache: "no-store",
     }),
     supabaseRequest<CrawledImageRow[]>("GET", "crawled_images", {
       params: {
         select: "id,room_type,style",
       },
-      cache: readCacheMode(),
+      cache: "no-store",
     }),
   ]);
 
