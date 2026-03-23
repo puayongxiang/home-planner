@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useAuthSession } from "@/components/useAuthSession";
+import { useToast } from "@/components/Toaster";
 import {
   CrawledImage,
   MoodboardImage,
@@ -13,6 +14,7 @@ import {
 
 export default function BrowseClient() {
   const { user, loading: authLoading, isAuthenticated, signInWithGoogle, signOut } = useAuthSession();
+  const { showToast } = useToast();
   const [selectedStyles, setSelectedStyles] = useState<string[]>(["Japandi"]);
   const [selectedRooms, setSelectedRooms] = useState<string[]>([
     ...ROOM_TYPES,
@@ -51,6 +53,10 @@ export default function BrowseClient() {
   const [shIncoming, setShIncoming] = useState<CrawledImage[]>([]);
   const spotlightRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
+
+  const notifyUnauthorized = useCallback((message: string) => {
+    showToast(message, "error");
+  }, [showToast]);
 
   const loadImages = useCallback(async () => {
     const [crawlRes, moodRes, ignoreRes] = await Promise.all([
@@ -171,6 +177,7 @@ export default function BrowseClient() {
   async function handleCrawl() {
     if (!isAuthenticated) {
       setStatus("Sign in to crawl new images.");
+      notifyUnauthorized("Sign in to crawl new images.");
       return;
     }
     if (selectedRooms.length === 0) return;
@@ -245,12 +252,19 @@ export default function BrowseClient() {
   async function handleClear() {
     if (!isAuthenticated) {
       setStatus("Sign in to manage the crawl catalog.");
+      notifyUnauthorized("Sign in to manage the crawl catalog.");
       return;
     }
     if (!confirm("Clear all crawled images and moodboard?")) return;
     const res = await fetch("/api/crawl", { method: "DELETE" });
     if (res.status === 401) {
       setStatus("Sign in to manage the crawl catalog.");
+      notifyUnauthorized("Sign in to manage the crawl catalog.");
+      return;
+    }
+    if (res.status === 403) {
+      setStatus("You do not have permission to manage the crawl catalog.");
+      notifyUnauthorized("You do not have permission to manage the crawl catalog.");
       return;
     }
     setCrawledImages([]);
@@ -302,6 +316,7 @@ export default function BrowseClient() {
   async function handleAddUrl() {
     if (!isAuthenticated) {
       setAddUrlStatus("Sign in to add URLs.");
+      notifyUnauthorized("Sign in to add URLs.");
       return;
     }
     if (!addUrl.trim()) return;
@@ -321,6 +336,12 @@ export default function BrowseClient() {
       if (!res.ok) {
         if (res.status === 401) {
           setAddUrlStatus("Sign in to add URLs.");
+          notifyUnauthorized("Sign in to add URLs.");
+          return;
+        }
+        if (res.status === 403) {
+          setAddUrlStatus("You do not have permission to add URLs.");
+          notifyUnauthorized("You do not have permission to add URLs.");
           return;
         }
         setAddUrlStatus(data.error || "Failed to add URL");
@@ -339,6 +360,7 @@ export default function BrowseClient() {
   async function handleStackedHomesCrawl() {
     if (!isAuthenticated) {
       setShStatus("Sign in to crawl new images.");
+      notifyUnauthorized("Sign in to crawl new images.");
       return;
     }
     setShCrawling(true);
@@ -406,6 +428,7 @@ export default function BrowseClient() {
   async function handleImport() {
     if (!isAuthenticated) {
       setImportStatus("Sign in to import URLs.");
+      notifyUnauthorized("Sign in to import URLs.");
       return;
     }
     if (!importUrl.trim()) return;
@@ -421,6 +444,12 @@ export default function BrowseClient() {
       if (!res.ok) {
         if (res.status === 401) {
           setImportStatus("Sign in to import URLs.");
+          notifyUnauthorized("Sign in to import URLs.");
+          return;
+        }
+        if (res.status === 403) {
+          setImportStatus("You do not have permission to import URLs.");
+          notifyUnauthorized("You do not have permission to import URLs.");
           return;
         }
         setImportStatus(data.error || "Import failed");

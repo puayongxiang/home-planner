@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { FurnitureItem, ROOM_TYPES } from "@/lib/types";
 
@@ -12,12 +12,29 @@ export default function FurniturePage() {
   const [adding, setAdding] = useState(false);
   const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
-  const load = useCallback(async () => {
+  async function load() {
     const res = await fetch("/api/furniture");
     setItems(await res.json());
-  }, []);
+  }
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+
+    async function loadInitialItems() {
+      const res = await fetch("/api/furniture");
+      const data: FurnitureItem[] = await res.json();
+
+      if (active) {
+        setItems(data);
+      }
+    }
+
+    void loadInitialItems();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const rooms = Array.from(new Set(items.map((i) => i.roomType).filter(Boolean))) as string[];
 

@@ -2,8 +2,11 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { ToastOnMount, useToast } from "@/components/Toaster";
 import { useAuthSession } from "@/components/useAuthSession";
 import { isEditorEmail } from "@/lib/editorAccess";
+import { createClient as createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { MoodboardImage, SavedLink, FurnitureItem, Stroke, DrawTool, ROOM_TYPES, STYLES } from "@/lib/types";
 import AnnotationCanvas from "@/components/AnnotationCanvas";
 
@@ -14,6 +17,7 @@ interface EnrichedMoodboardImage extends MoodboardImage {
 
 const isStatic = false;
 const showInternalTools = process.env.NEXT_PUBLIC_ENABLE_INTERNAL_TOOLS === "1";
+const STORAGE_BUCKET = "Images";
 
 const STYLE_COLORS: Record<string, string> = {
   Japandi: "#C4775B",
@@ -65,6 +69,8 @@ function getEmbedUrl(url: string, source: string): string | null {
 
 export default function MoodboardGallery({ initialImages, initialLinks = [], initialFurniture = [] }: { initialImages: EnrichedMoodboardImage[]; initialLinks?: SavedLink[]; initialFurniture?: FurnitureItem[] }) {
   const { user, loading: authLoading, signInWithGoogle, signOut } = useAuthSession();
+  const searchParams = useSearchParams();
+  const { showToast } = useToast();
   const canEdit = !isStatic && isEditorEmail(user?.email);
   const readOnlyStatus = isStatic ? "Static deployment is read-only." : "You do not have permission to edit.";
   const [images, setImages] = useState<EnrichedMoodboardImage[]>(initialImages);
@@ -77,8 +83,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   const [addUrl, setAddUrl] = useState("");
   const [addUrlRoom, setAddUrlRoom] = useState("Uncategorised");
   const [addUrlStyle, setAddUrlStyle] = useState("Uncategorised");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [addUrlStatus, setAddUrlStatus] = useState("");
   const [addingUrl, setAddingUrl] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [isDrawMode, setIsDrawMode] = useState(false);
   const [drawTool, setDrawTool] = useState<DrawTool>("pen");
   const [drawColor, setDrawColor] = useState("#FF4444");
@@ -93,6 +101,12 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   const [addLinkStatus, setAddLinkStatus] = useState("");
   const lightboxImageContainerRef = useRef<HTMLDivElement>(null);
   const debounceTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const authState = searchParams.get("auth");
+
+  const notifyUnauthorized = useCallback((message: string) => {
+    showToast(message, "error");
+  }, [showToast]);
 
   const rooms = useMemo(() => {
     const set = new Set<string>();
@@ -355,6 +369,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   async function handleAddUrl() {
     if (!canEdit) {
       setAddUrlStatus(readOnlyStatus);
+      notifyUnauthorized(readOnlyStatus);
       return;
     }
 
@@ -371,6 +386,12 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
       if (!res.ok) {
         if (res.status === 401) {
           setAddUrlStatus("Sign in to add URLs.");
+          notifyUnauthorized("Sign in to add URLs.");
+          return;
+        }
+        if (res.status === 403) {
+          setAddUrlStatus(readOnlyStatus);
+          notifyUnauthorized(readOnlyStatus);
           return;
         }
         setAddUrlStatus(data.error || "Failed to add");
@@ -393,9 +414,78 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
     }
   }
 
+  async function handleUploadImage() {
+    if (!canEdit) {
+      setAddUrlStatus(readOnlyStatus);
+      notifyUnauthorized(readOnlyStatus);
+      return;
+    }
+
+    if (!uploadFile) return;
+
+    setUploadingImage(true);
+    setAddUrlStatus("");
+
+    try {
+      const sanitizedName = uploadFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+      const filePath = `moodboard/${crypto.randomUUID()}-${sanitizedName}`;
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(filePath, uploadFile, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: uploadFile.type || undefined,
+        });
+
+      if (uploadError) {
+        setAddUrlStatus(uploadError.message || "Failed to upload");
+        return;
+      }
+
+      const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(filePath);
+      const res = await fetch("/api/moodboard/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageUrl: data.publicUrl,
+          roomType: addUrlRoom,
+          style: addUrlStyle,
+          alt: uploadFile.name,
+        }),
+      });
+      const payload = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          setAddUrlStatus("Sign in to upload images.");
+          notifyUnauthorized("Sign in to upload images.");
+          return;
+        }
+        if (res.status === 403) {
+          setAddUrlStatus(readOnlyStatus);
+          notifyUnauthorized(readOnlyStatus);
+          return;
+        }
+        setAddUrlStatus(payload.error || "Failed to add");
+        return;
+      }
+
+      const moodRes = await fetch("/api/moodboard");
+      const moodData: EnrichedMoodboardImage[] = await moodRes.json();
+      setImages(moodData);
+      setUploadFile(null);
+      setAddUrlStatus("Uploaded!");
+    } catch {
+      setAddUrlStatus("Failed to upload");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
   async function handleAddLink() {
     if (!canEdit) {
       setAddLinkStatus(readOnlyStatus);
+      notifyUnauthorized(readOnlyStatus);
       return;
     }
 
@@ -411,6 +501,16 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401) {
+          setAddLinkStatus("Sign in to save links.");
+          notifyUnauthorized("Sign in to save links.");
+          return;
+        }
+        if (res.status === 403) {
+          setAddLinkStatus(readOnlyStatus);
+          notifyUnauthorized(readOnlyStatus);
+          return;
+        }
         setAddLinkStatus(data.error || "Failed to save");
       } else {
         setLinkForm({ url: "", title: "", note: "", roomType: "", style: "" });
@@ -428,6 +528,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   async function handleAddFurniture() {
     if (!canEdit) {
       setAddFurnitureStatus(readOnlyStatus);
+      notifyUnauthorized(readOnlyStatus);
       return;
     }
 
@@ -446,6 +547,16 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
         const furnitureRes = await fetch("/api/furniture");
         setFurnitureItems(await furnitureRes.json());
       } else {
+        if (res.status === 401) {
+          setAddFurnitureStatus("Sign in to save furniture.");
+          notifyUnauthorized("Sign in to save furniture.");
+          return;
+        }
+        if (res.status === 403) {
+          setAddFurnitureStatus(readOnlyStatus);
+          notifyUnauthorized(readOnlyStatus);
+          return;
+        }
         setAddFurnitureStatus("Failed to add");
       }
     } catch {
@@ -695,9 +806,16 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   const pinnedCount = images.filter((i) => i.pinned).length + savedLinks.filter((l) => l.pinned).length + furnitureItems.filter((f) => f.pinned).length;
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
-      {/* Header */}
-      <header
+    <>
+      {authState === "forbidden" ? (
+        <ToastOnMount
+          message="Your account is signed in, but it does not have access to edit this workspace."
+          tone="error"
+        />
+      ) : null}
+      <div className="min-h-screen" style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}>
+        {/* Header */}
+        <header
         className="sticky top-0 z-30 backdrop-blur-md"
         style={{ background: "rgba(250, 250, 247, 0.9)", borderBottom: "1px solid var(--border-light)" }}
       >
@@ -747,7 +865,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
             </div>
           )}
         </div>
-      </header>
+        </header>
 
       {/* View tabs */}
       {isStatic && (
@@ -1027,6 +1145,21 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
                     onKeyDown={(e) => { if (e.key === "Enter") handleAddUrl(); }}
                     autoFocus
                   />
+                  <label
+                    className="w-full rounded-lg border border-dashed px-3.5 py-3 text-sm cursor-pointer transition-colors"
+                    style={{ background: "var(--bg-secondary)", borderColor: "var(--border-light)", color: uploadFile ? "var(--text-primary)" : "var(--text-muted)" }}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        setUploadFile(e.target.files?.[0] ?? null);
+                        setAddUrlStatus("");
+                      }}
+                    />
+                    {uploadFile ? `Selected: ${uploadFile.name}` : "Choose image from device to upload to Supabase Storage"}
+                  </label>
                   {isSocialUrl(addUrl.trim()) && (
                     <p className="text-xs" style={{ color: "var(--text-muted)" }}>
                       {isSocialUrl(addUrl.trim()) === "Instagram" ? "IG" : "XHS"} link detected — switch to the <button onClick={() => setAddTab("link")} className="underline cursor-pointer" style={{ color: "var(--accent-sage)" }}>Link</button> tab to save with preview.
@@ -1045,8 +1178,16 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
                   <button onClick={handleAddUrl} disabled={addingUrl || !addUrl.trim()} className="w-full py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer" style={{ background: "var(--accent-sage)", color: "white" }}>
                     {addingUrl ? "Adding..." : "Add to Moodboard"}
                   </button>
+                  <button
+                    onClick={handleUploadImage}
+                    disabled={uploadingImage || !uploadFile}
+                    className="w-full py-2.5 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                    style={{ background: "var(--accent-terracotta)", color: "white" }}
+                  >
+                    {uploadingImage ? "Uploading..." : `Upload to ${STORAGE_BUCKET}`}
+                  </button>
                   {addUrlStatus && (
-                    <p className="text-sm text-center" style={{ color: addUrlStatus === "Added!" ? "var(--accent-sage)" : "var(--accent-red)" }}>
+                    <p className="text-sm text-center" style={{ color: addUrlStatus === "Added!" || addUrlStatus === "Uploaded!" ? "var(--accent-sage)" : "var(--accent-red)" }}>
                       {addUrlStatus}
                     </p>
                   )}
@@ -1385,7 +1526,8 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
           transform: scale(1.06);
         }
       `}</style>
-    </div>
+      </div>
+    </>
   );
 }
 
