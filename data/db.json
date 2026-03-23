@@ -57478,6 +57478,26 @@
       "style": "Uncategorised",
       "source": "Manual",
       "crawledAt": "2026-03-23T13:18:14.724Z"
+    },
+    {
+      "id": "f0911ab8-1f7a-4e99-bd2b-28aa22c81933",
+      "sourceUrl": "https://vkfnxduolwcqglaupqjn.supabase.co/storage/v1/object/public/Images/09069252-54a6-43df-a72d-cc3f049848a3.jpeg",
+      "imageUrl": "https://vkfnxduolwcqglaupqjn.supabase.co/storage/v1/object/public/Images/09069252-54a6-43df-a72d-cc3f049848a3.jpeg",
+      "alt": "",
+      "roomType": "Study",
+      "style": "Uncategorised",
+      "source": "Manual",
+      "crawledAt": "2026-03-23T13:58:27.670Z"
+    },
+    {
+      "id": "03714fa8-4b0d-42e0-b7b9-c88a471b3654",
+      "sourceUrl": "https://vkfnxduolwcqglaupqjn.supabase.co/storage/v1/object/public/Images/2ad5ade8-d0fa-4a72-95df-c232fa9b0666.jpeg",
+      "imageUrl": "https://vkfnxduolwcqglaupqjn.supabase.co/storage/v1/object/public/Images/2ad5ade8-d0fa-4a72-95df-c232fa9b0666.jpeg",
+      "alt": "",
+      "roomType": "Dining Room",
+      "style": "Uncategorised",
+      "source": "Manual",
+      "crawledAt": "2026-03-23T13:59:06.243Z"
     }
   ],
   "moodboardImages": [
@@ -59389,6 +59409,61 @@
       "imageUrl": "https://vkfnxduolwcqglaupqjn.supabase.co/storage/v1/object/public/Images/fcaf1e25-d31f-4d3f-86ff-e4bb5f01813d.jpeg",
       "comment": "Like the floor as it adds character to the space\n",
       "addedAt": "2026-03-23T13:18:14.853Z",
+      "pinned": true
+    },
+    {
+      "id": "56f775ff-f32d-47bb-8bb8-c0fd1318845a",
+      "crawledImageId": "07334b77-55d0-4637-a2f8-c63bd0de5406",
+      "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/814188/5a85f17b2b/1024-width",
+      "comment": "",
+      "addedAt": "2026-03-23T13:32:23.946Z"
+    },
+    {
+      "id": "b48013a9-54b1-45f7-ad5b-876024dd1792",
+      "crawledImageId": "b54adcec-2077-4951-908c-39cc78b41e8b",
+      "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/884588/be9c09f7fc/1024-width",
+      "comment": "the space can be used as a bedside table and have the dresser beside it",
+      "addedAt": "2026-03-23T13:33:21.298Z",
+      "annotations": [
+        {
+          "tool": "rect",
+          "points": [
+            {
+              "x": 0.34566497802734375,
+              "y": 0.562717331625183
+            },
+            {
+              "x": 0.4950904846191406,
+              "y": 0.8542963030746705
+            }
+          ],
+          "color": "#FF4444",
+          "width": 4
+        }
+      ],
+      "pinned": true
+    },
+    {
+      "id": "a01a7613-6f79-4684-8bac-1b47f1a646cb",
+      "crawledImageId": "6c299472-a9d7-4a34-8846-778d23aafb13",
+      "imageUrl": "https://d1hy6t2xeg0mdl.cloudfront.net/image/884590/1eade321ca/1024-width",
+      "comment": "",
+      "addedAt": "2026-03-23T13:33:23.700Z"
+    },
+    {
+      "id": "55a0abec-7dbd-487d-8e25-b5c43353632e",
+      "crawledImageId": "f0911ab8-1f7a-4e99-bd2b-28aa22c81933",
+      "imageUrl": "https://vkfnxduolwcqglaupqjn.supabase.co/storage/v1/object/public/Images/09069252-54a6-43df-a72d-cc3f049848a3.jpeg",
+      "comment": "collapsible door. looks very spacious and nice",
+      "addedAt": "2026-03-23T13:58:27.709Z",
+      "pinned": true
+    },
+    {
+      "id": "e0cbbc33-4506-4f21-9b26-cecb7c2192f9",
+      "crawledImageId": "03714fa8-4b0d-42e0-b7b9-c88a471b3654",
+      "imageUrl": "https://vkfnxduolwcqglaupqjn.supabase.co/storage/v1/object/public/Images/2ad5ade8-d0fa-4a72-95df-c232fa9b0666.jpeg",
+      "comment": "thought the shelves can save space",
+      "addedAt": "2026-03-23T13:59:06.376Z",
       "pinned": true
     }
   ],
@@ -63546,7 +63621,20 @@
     "b5508bcd-55a4-437b-baf4-f5936e1e2aad",
     "e748b5b8-d967-449e-8b06-1c79fff77f85",
     "2d4741b0-9c05-4dea-a04a-8b8334055c03",
-    "4e5b41bf-7acf-44fb-9074-d0c8af4d51d0"
+    "4e5b41bf-7acf-44fb-9074-d0c8af4d51d0",
+    "105e3db5-5212-4a32-aa73-38de8af7f142",
+    "fdc1b744-10cc-4689-9f11-9c40a0bea316",
+    "99dc6e5a-2302-4f64-90f1-7531c787db1a",
+    "2efc2f64-b713-4abe-a063-57cb574f43d9",
+    "7d483034-cf1f-43cf-a169-762ece4a4f14",
+    "ab1e3fd0-b0c6-4716-81b3-d9081a7e5ffd",
+    "4d2ef075-d2ee-40bf-907e-560c6f1fd78d",
+    "c6ff6762-bdf4-48d2-bdf2-3af0da1ea926",
+    "faf5e5c4-fb8d-42eb-a3a5-259fb8fb07a1",
+    "50078a3e-e8be-4b8b-a205-c43858812d40",
+    "702d76ed-a8c2-4d63-ac7c-30c92e892331",
+    "dfffe2b8-5680-41aa-a9ef-82ba6ccd6d61",
+    "5cb4578e-03db-4759-a31c-ee6a09adbcfb"
   ],
   "furnitureItems": [],
   "savedLinks": [
