@@ -46,3 +46,4 @@ next-env.d.ts
 # data/migrations
 data/db-clean.json
 supabase-migration.sql
+.env*.local

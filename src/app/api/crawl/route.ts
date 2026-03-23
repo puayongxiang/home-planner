@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Browser } from "puppeteer";
+import puppeteer from "puppeteer";
 import { v4 as uuidv4 } from "uuid";
 import { requireEditorUser } from "@/lib/auth";
 import {
@@ -22,8 +22,7 @@ async function crawlPage(
   url: string,
   scrollCount: number
 ): Promise<CrawledEntry[]> {
-  const puppeteer = await import("puppeteer");
-  const browser: Browser = await puppeteer.default.launch({
+  const browser = await puppeteer.launch({
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
