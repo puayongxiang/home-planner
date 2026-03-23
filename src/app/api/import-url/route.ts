@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { readDB, writeDB } from "@/lib/db";
+import { addCrawledImages, listCrawledImages } from "@/lib/repository";
 
 
 const ROOM_KEYWORDS: Record<string, string> = {
@@ -157,9 +157,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const db = readDB();
-    const existingUrls = new Set(db.crawledImages.map((c) => c.imageUrl));
-    let added = 0;
+    const existingUrls = new Set((await listCrawledImages()).map((image) => image.imageUrl));
+    const newImages: Awaited<ReturnType<typeof listCrawledImages>> = [];
 
     for (const img of scraped) {
       if (existingUrls.has(img.src)) continue;
@@ -183,17 +182,16 @@ export async function POST(req: NextRequest) {
         crawledAt: new Date().toISOString(),
       };
 
-      db.crawledImages.push(image);
+      newImages.push(image);
       existingUrls.add(img.src);
-      added++;
     }
 
-    writeDB(db);
+    await addCrawledImages(newImages);
 
     return NextResponse.json({
       total: scraped.length,
-      added,
-      skipped: scraped.length - added,
+      added: newImages.length,
+      skipped: scraped.length - newImages.length,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to import images";

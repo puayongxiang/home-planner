@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { readDB, writeDB } from "@/lib/db";
+import { addCrawledImages, listCrawledImages } from "@/lib/repository";
 
 
 const BASE_URL = "https://stackedhomes.com/category/home-tours";
@@ -155,8 +155,7 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const db = readDB();
-        const existingUrls = new Set(db.crawledImages.map((c) => c.imageUrl));
+        const existingUrls = new Set((await listCrawledImages()).map((image) => image.imageUrl));
         let totalNew = 0;
         let totalFound = 0;
         const totalPages = endPage - startPage + 1;
@@ -243,7 +242,7 @@ export async function POST(req: NextRequest) {
               existingUrls.add(img.imageUrl);
             }
             totalNew += newImages.length;
-            db.crawledImages.push(...newImages);
+            await addCrawledImages(newImages);
 
             // Send article done event
             controller.enqueue(
@@ -263,8 +262,6 @@ export async function POST(req: NextRequest) {
             await new Promise((r) => setTimeout(r, 300));
           }
         }
-
-        writeDB(db);
 
         controller.enqueue(
           encoder.encode(

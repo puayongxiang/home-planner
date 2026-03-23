@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { readDB, writeDB } from "@/lib/db";
+import {
+  createSavedLink,
+  deleteSavedLink,
+  hasSavedLinkByUrl,
+  listSavedLinks,
+  updateSavedLink,
+} from "@/lib/repository";
 
 function detectSource(url: string): string {
   if (/instagram\.com/i.test(url)) return "Instagram";
@@ -11,11 +17,7 @@ function detectSource(url: string): string {
 }
 
 export async function GET() {
-  const db = readDB();
-  const sorted = [...db.savedLinks].sort(
-    (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime()
-  );
-  return NextResponse.json(sorted);
+  return NextResponse.json(await listSavedLinks());
 }
 
 export async function POST(req: NextRequest) {
@@ -26,14 +28,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
   }
 
-  const db = readDB();
-
   // Check for duplicate
-  if (db.savedLinks.some((l) => l.url === url)) {
+  if (await hasSavedLinkByUrl(url)) {
     return NextResponse.json({ error: "This link is already saved" }, { status: 409 });
   }
 
-  const link = {
+  const link = await createSavedLink({
     id: uuidv4(),
     url,
     source: detectSource(url),
@@ -41,11 +41,7 @@ export async function POST(req: NextRequest) {
     note: note || "",
     roomType: roomType || "",
     style: style || "",
-    savedAt: new Date().toISOString(),
-  };
-
-  db.savedLinks.push(link);
-  writeDB(db);
+  });
 
   return NextResponse.json(link);
 }
@@ -53,27 +49,15 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const body = await req.json();
   const { id, ...updates } = body;
-
-  const db = readDB();
-  const link = db.savedLinks.find((l) => l.id === id);
+  const link = await updateSavedLink(id, updates);
   if (!link) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-
-  if ("title" in updates) link.title = updates.title;
-  if ("note" in updates) link.note = updates.note;
-  if ("roomType" in updates) link.roomType = updates.roomType;
-  if ("style" in updates) link.style = updates.style;
-  if ("pinned" in updates) link.pinned = updates.pinned;
-
-  writeDB(db);
   return NextResponse.json(link);
 }
 
 export async function DELETE(req: NextRequest) {
   const { id } = await req.json();
-  const db = readDB();
-  db.savedLinks = db.savedLinks.filter((l) => l.id !== id);
-  writeDB(db);
+  await deleteSavedLink(id);
   return NextResponse.json({ success: true });
 }

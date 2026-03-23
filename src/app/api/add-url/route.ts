@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
-import { readDB, writeDB } from "@/lib/db";
+import { addCrawledImage, hasCrawledImageByImageUrlOrSourceUrl } from "@/lib/repository";
 
 
 async function extractOgImage(url: string): Promise<{ imageUrl: string; title: string }> {
@@ -61,17 +61,15 @@ export async function POST(req: NextRequest) {
       title = extracted.title;
     }
 
-    const db = readDB();
-
     // Check if this image was already added
-    if (db.crawledImages.some((c) => c.imageUrl === imageUrl || c.sourceUrl === url)) {
+    if (await hasCrawledImageByImageUrlOrSourceUrl(imageUrl, url)) {
       return NextResponse.json(
         { error: "This image has already been added" },
         { status: 409 }
       );
     }
 
-    const image = {
+    const image = await addCrawledImage({
       id: uuidv4(),
       sourceUrl: url,
       imageUrl,
@@ -80,10 +78,7 @@ export async function POST(req: NextRequest) {
       style: style || "Uncategorised",
       source: "Manual",
       crawledAt: new Date().toISOString(),
-    };
-
-    db.crawledImages.push(image);
-    writeDB(db);
+    });
 
     return NextResponse.json(image);
   } catch (error) {

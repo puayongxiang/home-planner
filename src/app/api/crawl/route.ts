@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { v4 as uuidv4 } from "uuid";
-import { readDB, writeDB, CrawledImage } from "@/lib/db";
+import {
+  addCrawledImages,
+  clearCrawledWorkspace,
+  listCrawledImages,
+  updateCrawledImage,
+  CrawledImage,
+} from "@/lib/repository";
 
 
 const BASE_URL = "https://qanvast.com/sg/interior-design-singapore";
@@ -94,7 +100,7 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const db = readDB();
+        const existingUrls = new Set((await listCrawledImages()).map((image) => image.imageUrl));
         let totalNew = 0;
         let totalFound = 0;
 
@@ -117,9 +123,7 @@ export async function POST(req: NextRequest) {
           totalFound += entries.length;
 
           const newImages: CrawledImage[] = entries
-            .filter(
-              (e) => !db.crawledImages.some((c) => c.imageUrl === e.src)
-            )
+            .filter((entry) => !existingUrls.has(entry.src))
             .map((e) => ({
               id: uuidv4(),
               sourceUrl: url,
@@ -131,8 +135,12 @@ export async function POST(req: NextRequest) {
               crawledAt: new Date().toISOString(),
             }));
 
+          for (const image of newImages) {
+            existingUrls.add(image.imageUrl);
+          }
+
           totalNew += newImages.length;
-          db.crawledImages.push(...newImages);
+          await addCrawledImages(newImages);
 
           // Send room complete with images found
           controller.enqueue(
@@ -141,8 +149,6 @@ export async function POST(req: NextRequest) {
             )
           );
         }
-
-        writeDB(db);
 
         controller.enqueue(
           encoder.encode(
@@ -176,27 +182,18 @@ export async function PUT(req: NextRequest) {
   if (!id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
-  const db = readDB();
-  const image = db.crawledImages.find((img) => img.id === id);
+  const image = await updateCrawledImage(id, { roomType, style });
   if (!image) {
     return NextResponse.json({ error: "Image not found" }, { status: 404 });
   }
-  if (roomType !== undefined) image.roomType = roomType;
-  if (style !== undefined) image.style = style;
-  writeDB(db);
   return NextResponse.json(image);
 }
 
 export async function GET() {
-  const db = readDB();
-  return NextResponse.json(db.crawledImages);
+  return NextResponse.json(await listCrawledImages());
 }
 
 export async function DELETE() {
-  const db = readDB();
-  db.crawledImages = [];
-  db.moodboardImages = [];
-  db.ignoredIds = [];
-  writeDB(db);
+  await clearCrawledWorkspace();
   return NextResponse.json({ success: true });
 }
