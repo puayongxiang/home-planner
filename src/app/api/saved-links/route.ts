@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import { requireEditorUser } from "@/lib/auth";
 import {
   createSavedLink,
   deleteSavedLink,
@@ -22,6 +23,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const body = await req.json();
   const { url, title, note, roomType, style } = body;
 
@@ -56,6 +62,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const body = await req.json();
   const { id, ...updates } = body;
   const link = await updateSavedLink(id, updates);
@@ -66,6 +77,11 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const { id } = await req.json();
   await deleteSavedLink(id);
   return NextResponse.json({ success: true });

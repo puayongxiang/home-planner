@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useAuthSession } from "@/components/useAuthSession";
+import { isEditorEmail } from "@/lib/editorAccess";
 import { MoodboardImage, SavedLink, FurnitureItem, Stroke, DrawTool, ROOM_TYPES, STYLES } from "@/lib/types";
 import AnnotationCanvas from "@/components/AnnotationCanvas";
 
@@ -63,7 +64,9 @@ function getEmbedUrl(url: string, source: string): string | null {
 }
 
 export default function MoodboardGallery({ initialImages, initialLinks = [], initialFurniture = [] }: { initialImages: EnrichedMoodboardImage[]; initialLinks?: SavedLink[]; initialFurniture?: FurnitureItem[] }) {
-  const { user, loading: authLoading, isAuthenticated, signInWithGoogle, signOut } = useAuthSession();
+  const { user, loading: authLoading, signInWithGoogle, signOut } = useAuthSession();
+  const canEdit = !isStatic && isEditorEmail(user?.email);
+  const readOnlyStatus = isStatic ? "Static deployment is read-only." : "You do not have permission to edit.";
   const [images, setImages] = useState<EnrichedMoodboardImage[]>(initialImages);
   const [savedLinks, setSavedLinks] = useState<SavedLink[]>(initialLinks);
   const [furnitureItems, setFurnitureItems] = useState<FurnitureItem[]>(initialFurniture);
@@ -333,14 +336,14 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
         if (e.key === "ArrowLeft")
           setLightboxIndex((i) => (i !== null ? Math.max(i - 1, 0) : null));
       }
-      if (!isStatic && (e.ctrlKey || e.metaKey) && e.key === "z" && lightboxImage) {
+      if (canEdit && (e.ctrlKey || e.metaKey) && e.key === "z" && lightboxImage) {
         e.preventDefault();
         handleAnnotationUndo(lightboxImage.id);
       }
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [lightboxIndex, displayOrderImages.length, isDrawMode, lightboxImage]);
+  }, [canEdit, lightboxIndex, displayOrderImages.length, isDrawMode, lightboxImage]);
 
   function isSocialUrl(url: string): false | string {
     if (/instagram\.com\/(p|reel)\//i.test(url)) return "Instagram";
@@ -350,15 +353,11 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleAddUrl() {
-    if (isStatic) {
-      setAddUrlStatus("Static deployment is read-only.");
+    if (!canEdit) {
+      setAddUrlStatus(readOnlyStatus);
       return;
     }
 
-    if (!isAuthenticated) {
-      setAddUrlStatus("Sign in to add URLs.");
-      return;
-    }
     if (!addUrl.trim()) return;
     setAddingUrl(true);
     setAddUrlStatus("");
@@ -395,8 +394,8 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleAddLink() {
-    if (isStatic) {
-      setAddLinkStatus("Static deployment is read-only.");
+    if (!canEdit) {
+      setAddLinkStatus(readOnlyStatus);
       return;
     }
 
@@ -427,8 +426,8 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleAddFurniture() {
-    if (isStatic) {
-      setAddFurnitureStatus("Static deployment is read-only.");
+    if (!canEdit) {
+      setAddFurnitureStatus(readOnlyStatus);
       return;
     }
 
@@ -457,7 +456,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleToggleLinkPin(id: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -473,7 +472,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleRemoveLink(id: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -486,7 +485,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleLinkFieldChange(id: string, field: string, value: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -508,7 +507,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleToggleFurniturePin(id: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -524,7 +523,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleRemoveFurniture(id: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -537,7 +536,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleFurnitureFieldChange(id: string, field: string, value: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -559,7 +558,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleCommentChange(id: string, comment: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -580,7 +579,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleRemove(id: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -594,7 +593,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleAnnotationAdd(id: string, stroke: Stroke) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -622,7 +621,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleAnnotationUndo(id: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -641,7 +640,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   function handleAnnotationClear(id: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -659,7 +658,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleUpdateRoomType(moodboardId: string, crawledImageId: string, roomType: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -678,7 +677,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
   }
 
   async function handleTogglePin(id: string) {
-    if (isStatic) {
+    if (!canEdit) {
       return;
     }
 
@@ -736,7 +735,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
                   Sign in with Google
                 </button>
               )}
-              {showInternalTools && !!user && (
+              {showInternalTools && canEdit && (
                 <Link
                   href="/browse"
                   className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
@@ -904,6 +903,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
                   key={item.data.id}
                   img={item.data as EnrichedMoodboardImage}
                   index={i}
+                  canEdit={canEdit}
                   onClick={() => setLightboxIndex(displayOrderImages.indexOf(item.data as EnrichedMoodboardImage))}
                   onRemove={handleRemove}
                   onCommentChange={handleCommentChange}
@@ -914,6 +914,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
                   key={item.data.id}
                   link={item.data as SavedLink}
                   index={i}
+                  canEdit={canEdit}
                   onRemove={handleRemoveLink}
                   onFieldChange={handleLinkFieldChange}
                   onTogglePin={handleToggleLinkPin}
@@ -923,6 +924,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
                   key={item.data.id}
                   item={item.data as FurnitureItem}
                   index={i}
+                  canEdit={canEdit}
                   onRemove={handleRemoveFurniture}
                   onFieldChange={handleFurnitureFieldChange}
                   onTogglePin={handleToggleFurniturePin}
@@ -944,7 +946,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
             <p className="text-2xl mb-2" style={{ fontFamily: "var(--font-display)", color: "var(--text-secondary)" }}>
               No items yet
             </p>
-            {!isStatic && showInternalTools && !!user && (
+            {!isStatic && showInternalTools && canEdit && (
               <p className="text-sm" style={{ color: "var(--text-muted)" }}>
                 Go{" "}
                 <Link href="/browse" className="underline" style={{ color: "var(--accent-sage)" }}>
@@ -958,7 +960,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
       </main>
 
       {/* Playground FAB — dev only */}
-      {!isStatic && showInternalTools && !!user && (
+      {!isStatic && showInternalTools && canEdit && (
         <Link
           href="/playground"
           className="fixed bottom-6 right-24 z-40 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-md"
@@ -970,7 +972,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
       )}
 
       {/* FAB + Add URL modal — dev only */}
-      {!isStatic && isAuthenticated && (
+      {canEdit && (
         <>
           <button
             onClick={() => setShowAddUrl(!showAddUrl)}
@@ -1180,10 +1182,10 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
             <div ref={lightboxImageContainerRef} className="relative" style={{ transform: `scale(${zoomScale}) translate(${zoomOffset.x / zoomScale}px, ${zoomOffset.y / zoomScale}px)`, transition: pinchRef.current || panRef.current ? 'none' : 'transform 0.2s ease-out', touchAction: zoomScale > 1 ? 'none' : 'pan-y' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img key={lightboxImage.id} src={lightboxImage.imageUrl} alt="Moodboard image" className="max-w-full max-h-[70vh] sm:max-h-[65vh] object-contain rounded-lg select-none" style={{ animation: "lightboxIn 0.2s ease-out" }} draggable={false} referrerPolicy="no-referrer" />
-              <AnnotationCanvas
+                <AnnotationCanvas
                 containerRef={lightboxImageContainerRef}
                 annotations={lightboxImage.annotations || []}
-                isDrawMode={!isStatic && isDrawMode}
+                isDrawMode={canEdit && isDrawMode}
                 currentColor={drawColor}
                 currentWidth={drawWidth}
                 currentTool={drawTool}
@@ -1192,7 +1194,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
             </div>
 
             {/* Drawing toolbar — dev only */}
-            {!isStatic && (
+            {canEdit && (
               <div className="mt-3 hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.12)" }}>
                 {/* View mode (cursor) */}
                 <button
@@ -1305,7 +1307,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
             {/* Info + comment */}
             <div className="mt-2 sm:mt-3 flex flex-col items-center gap-2 w-full max-w-lg px-2 sm:px-0">
               <div className="flex items-center gap-2 flex-wrap justify-center">
-                {!isStatic && (lightboxImage.roomType === "Uncategorised" || lightboxImage.roomType === "") ? (
+                {canEdit && (lightboxImage.roomType === "Uncategorised" || lightboxImage.roomType === "") ? (
                   <div className="flex items-center gap-1.5 flex-wrap justify-center">
                     <span className="text-xs uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)", fontWeight: 500, letterSpacing: "0.08em" }}>
                       Tag room:
@@ -1334,7 +1336,7 @@ export default function MoodboardGallery({ initialImages, initialLinks = [], ini
                   {lightboxIndex! + 1} / {displayOrderImages.length}
                 </span>
               </div>
-              {!isStatic ? (
+              {canEdit ? (
                 <textarea
                   value={lightboxImage.comment || ""}
                   onChange={(e) => handleCommentChange(lightboxImage.id, e.target.value)}
@@ -1442,6 +1444,7 @@ function StrokesOverlay({ annotations }: { annotations?: Stroke[] }) {
 function GridCard({
   img,
   index,
+  canEdit,
   onClick,
   onRemove,
   onCommentChange,
@@ -1449,6 +1452,7 @@ function GridCard({
 }: {
   img: { id: string; imageUrl: string; roomType: string; style: string; comment: string; pinned?: boolean; annotations?: Stroke[] };
   index: number;
+  canEdit: boolean;
   onClick: () => void;
   onRemove: (id: string) => void;
   onCommentChange: (id: string, comment: string) => void;
@@ -1507,7 +1511,7 @@ function GridCard({
             </span>
           )}
           {/* Action buttons — dev only */}
-          {!isStatic && (
+          {canEdit && (
             <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
               <button
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
@@ -1529,7 +1533,7 @@ function GridCard({
         </div>
         {/* Comment */}
         <div className="px-3 py-2.5">
-          {!isStatic ? (
+          {canEdit ? (
             <textarea
               value={img.comment || ""}
               onChange={(e) => onCommentChange(img.id, e.target.value)}
@@ -1557,12 +1561,14 @@ function GridCard({
 function SavedLinkCard({
   link,
   index,
+  canEdit,
   onRemove,
   onFieldChange,
   onTogglePin,
 }: {
   link: SavedLink;
   index: number;
+  canEdit: boolean;
   onRemove: (id: string) => void;
   onFieldChange: (id: string, field: string, value: string) => void;
   onTogglePin: (id: string) => void;
@@ -1605,7 +1611,7 @@ function SavedLinkCard({
               sandbox="allow-scripts allow-same-origin allow-popups"
             />
             <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-              {!isStatic && (
+              {canEdit && (
                 <>
                   <button
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
@@ -1653,7 +1659,7 @@ function SavedLinkCard({
               <span className="text-xs" style={{ color: "var(--text-muted)" }}>{domain}</span>
             </div>
             {/* Action buttons */}
-            {!isStatic && (
+            {canEdit && (
               <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                 <button
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
@@ -1684,7 +1690,7 @@ function SavedLinkCard({
             >
               {sourceIcon}
             </span>
-            {!isStatic ? (
+            {canEdit ? (
               <input
                 type="text"
                 value={link.title || ""}
@@ -1711,7 +1717,7 @@ function SavedLinkCard({
               )}
             </div>
           )}
-          {!isStatic ? (
+          {canEdit ? (
             <textarea
               value={link.note || ""}
               onChange={(e) => onFieldChange(link.id, "note", e.target.value)}
@@ -1739,12 +1745,14 @@ function SavedLinkCard({
 function FurnitureCard({
   item,
   index,
+  canEdit,
   onRemove,
   onFieldChange,
   onTogglePin,
 }: {
   item: FurnitureItem;
   index: number;
+  canEdit: boolean;
   onRemove: (id: string) => void;
   onFieldChange: (id: string, field: string, value: string) => void;
   onTogglePin: (id: string) => void;
@@ -1795,7 +1803,7 @@ function FurnitureCard({
             >
               Furniture
             </span>
-            {!isStatic && (
+            {canEdit && (
               <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                 <button
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
@@ -1831,7 +1839,7 @@ function FurnitureCard({
             >
               Furniture
             </span>
-            {!isStatic && (
+            {canEdit && (
               <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                 <button
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:brightness-110"
@@ -1855,7 +1863,7 @@ function FurnitureCard({
         {/* Info */}
         <div className="px-3.5 py-3 flex flex-col gap-1.5">
           <div className="flex items-start justify-between gap-2">
-            {!isStatic ? (
+            {canEdit ? (
               <input
                 type="text"
                 value={item.name}
@@ -1883,7 +1891,7 @@ function FurnitureCard({
               {item.link.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]}
             </a>
           )}
-          {!isStatic ? (
+          {canEdit ? (
             <textarea
               value={item.notes || ""}
               onChange={(e) => onFieldChange(item.id, "notes", e.target.value)}

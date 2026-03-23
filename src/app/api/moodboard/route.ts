@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
+import { requireEditorUser } from "@/lib/auth";
 import {
   createMoodboardImage,
   deleteMoodboardImage,
@@ -15,6 +16,11 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const { crawledImageId, imageUrl } = await req.json();
   // Check if already in moodboard
   if (await hasMoodboardImageForCrawledImage(crawledImageId)) {
@@ -45,6 +51,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const body = await req.json();
   const { id } = body;
   const image = await updateMoodboardImage(id, body);
@@ -56,6 +67,11 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const authResult = await requireEditorUser();
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   const { id } = await req.json();
   await deleteMoodboardImage(id);
 
